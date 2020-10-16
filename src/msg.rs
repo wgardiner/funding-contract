@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, HumanAddr};
+use cosmwasm_std::{Coin, HumanAddr, CanonicalAddr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -34,8 +34,14 @@ pub enum QueryMsg {
     GetCount {},
 }
 
+// // We define a custom struct for each query response
+// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+// pub struct CountResponse {
+//     pub count: i32,
+// }
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CountResponse {
-    pub count: i32,
+    pub count: Vec<CanonicalAddr>,
+    // pub count: HumanAddr,
 }
