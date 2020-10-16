@@ -15,7 +15,8 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     info: MessageInfo,
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
-    let pw: Vec<CanonicalAddr> = msg.proposer_whitelist.into_iter().map(|x| deps.api.canonical_address(&x)).collect::<Vec<CanonicalAddr>>()?;
+    // let pw: Vec<CanonicalAddr> = msg.proposer_whitelist.into_iter().map(|x| deps.api.canonical_address(&x)).collect::<Vec<CanonicalAddr>>()?;
+    let pw: Vec<_> = msg.proposer_whitelist.into_iter().map(|x| deps.api.canonical_address(&x)).filter_map(Result::ok).collect::<Vec<_>>();
     let state = State {
         // count: msg.count,
         owner: deps.api.canonical_address(&info.sender)?,
@@ -37,18 +38,18 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     // TODO: handle expired with Err
 }
 
-// And declare a custom Error variant for the ones where you will want to make use of it
-pub fn handle<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    _env: Env,
-    info: MessageInfo,
-    msg: HandleMsg,
-) -> Result<HandleResponse, ContractError> {
-    match msg {
-        // HandleMsg::Increment {} => try_increment(deps),
-        // HandleMsg::Reset { count } => try_reset(deps, info, count),
-    }
-}
+// // And declare a custom Error variant for the ones where you will want to make use of it
+// pub fn handle<S: Storage, A: Api, Q: Querier>(
+//     deps: &mut Extern<S, A, Q>,
+//     _env: Env,
+//     info: MessageInfo,
+//     msg: HandleMsg,
+// ) -> Result<HandleResponse, ContractError> {
+//     match msg {
+//         // HandleMsg::Increment {} => try_increment(deps),
+//         // HandleMsg::Reset { count } => try_reset(deps, info, count),
+//     }
+// }
 
 // pub fn try_increment<S: Storage, A: Api, Q: Querier>(
 //     deps: &mut Extern<S, A, Q>,
@@ -133,9 +134,10 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // it worked, let's query the state
-        // println!("{:?}")
-        // let res = query(&deps, mock_env(), QueryMsg::GetCount {}).unwrap();
+        let res = query(&deps, mock_env(), QueryMsg::GetCount {}).unwrap();
+        let value: CountResponse = from_binary(&res).unwrap();
         // let value: CountResponse = from_binary(&res).unwrap();
+        println!("{:?}", value);
         // assert_eq!(17, value.count);
     }
 
