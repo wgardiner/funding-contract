@@ -160,8 +160,9 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
         state.voting_period_start.unwrap(),
         state.voting_period_end.unwrap(),
     );
+    let proposal_is_valid = state.proposals.len() as u32 >= proposal_id;
     let voter = deps.api.canonical_address(&info.sender)?;
-    if sender_is_valid && period_is_valid {
+    if sender_is_valid && period_is_valid && proposal_is_valid {
         config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
             state.votes.push(Vote {
                 voter: voter,

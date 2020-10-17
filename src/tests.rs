@@ -169,4 +169,159 @@ mod tests {
             state.proposals.len(),
         );
     }
+
+    #[test]
+    fn fails_create_vote_invalid_address() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+
+        // create vote.
+        let vote_msg = HandleMsg::CreateVote {
+            proposal_id: 1,
+        };
+
+        // try to create a vote as "any user"
+        let info = mock_info("any_user", &coins(1000, "earth"));
+
+        // set the time to the voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 3;
+
+        // send message.
+        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+
+        // vote should not be created.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(
+            0,
+            state.votes.len(),
+        );
+    }
+
+    #[test]
+    fn fails_create_vote_invalid_proposal() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+
+        // create vote.
+        // use an invalid proposal id.
+        let vote_msg = HandleMsg::CreateVote {
+            proposal_id: 3,
+        };
+        let info = mock_info("voter_0", &coins(1000, "earth"));
+
+        // set the time to the voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 3;
+
+        // send message.
+        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+
+        // vote should not be created.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(
+            0,
+            state.votes.len(),
+        );
+
+    }
+
+    #[test]
+    fn fails_create_vote_invalid_period() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+
+        // create vote.
+        let vote_msg = HandleMsg::CreateVote {
+            proposal_id: 1,
+        };
+        let info = mock_info("voter_0", &coins(1000, "earth"));
+
+        // set the time to the proposal period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 1;
+
+        // send message.
+        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+
+        // vote should not be created.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(
+            0,
+            state.votes.len(),
+        );
+    }
+
+    #[test]
+    fn create_vote_no_voter_list() {
+        let mut deps = mock_dependencies(&[]);
+
+        // modify init message to empty voter whitelist.
+        let mut msg = default_init_msg();
+        msg.voter_whitelist = Vec::new();
+        mock_init(&mut deps, msg);
+
+        mock_proposal(&mut deps, default_proposal_msg());
+
+        // create vote.
+        let vote_msg = HandleMsg::CreateVote {
+            proposal_id: 1,
+        };
+
+        // try to create a vote as "any user"
+        let info = mock_info("any_user", &coins(1000, "earth"));
+
+        // set the time to the voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 3;
+
+        // send message.
+        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+
+        // vote should be created.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(
+            1,
+            state.votes.len(),
+        );
+        // TODO: Check that the voter address is correct. The below code fails.
+        //let voter = deps.api.canonical_address(&info.sender)?;
+        //assert_eq!(voter, state.votes[0].voter);
+    }
+
+    #[test]
+    fn create_vote() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+
+        // create vote.
+        let vote_msg = HandleMsg::CreateVote {
+            proposal_id: 2,
+        };
+        let info = mock_info("voter_0", &coins(1000, "earth"));
+
+        // set the time to the voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 3;
+
+        // send message.
+        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+
+        // vote should be created.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(
+            1,
+            state.votes.len(),
+        );
+        // TODO: Check that the voter address is correct. The below code fails.
+        //let voter = deps.api.canonical_address(&info.sender)?;
+        //assert_eq!(voter, state.votes[0].voter);
+    }
 }
