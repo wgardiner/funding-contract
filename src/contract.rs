@@ -145,23 +145,24 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     state: State,
     proposal_id: u32,
 ) -> Result<HandleResponse, ContractError> {
-    config(&mut deps.storage).update(|mut state| -> Result<_, ContractError> {
-        // TODO: check if sender matches whitelist
-        let sender_is_valid = validate_sender(deps.api.canonical_address(&info.sender)?, state.voter_whitelist);
-        let period_is_valid = validate_period(
-            env.block.time,
-            state.voting_period_start.unwrap(),
-            state.voting_period_end.unwrap(),
-        );
-        if sender_is_valid && period_is_valid {
+    // TODO: check if sender matches whitelist
+    let sender_is_valid = validate_sender(deps.api.canonical_address(&info.sender)?, state.voter_whitelist);
+    let period_is_valid = validate_period(
+        env.block.time,
+        state.voting_period_start.unwrap(),
+        state.voting_period_end.unwrap(),
+    );
+    let voter = deps.api.canonical_address(&info.sender)?;
+    if sender_is_valid && period_is_valid {
+        config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
             state.votes.push(Vote {
-                voter: deps.api.canonical_address(&info.sender)?,
+                voter: voter,
                 proposal: proposal_id,
                 amount: info.sent_funds,
-            })
-        }
-        Ok(state)
-    })?;
+            });
+            Ok(state)
+        })?;
+    }
 
     Ok(HandleResponse::default())
 }
