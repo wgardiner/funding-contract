@@ -7,6 +7,7 @@ mod tests {
     use cosmwasm_std::{ Extern, HumanAddr, coins, from_binary};
 
     fn default_init_msg() -> InitMsg {
+        let env = mock_env();
         InitMsg {
             name: "My Funding Round".to_string(),
             proposer_whitelist: vec![
@@ -19,19 +20,14 @@ mod tests {
                 HumanAddr::from("voter_1"),
                 HumanAddr::from("voter_2"),
             ],
-            // proposal_period_start: None,
-            // proposal_period_end: None,
-            // voting_period_start: None,
-            // voting_period_end: None,
-            proposal_period_start: Some(1602896282),
-            proposal_period_end: Some(1602896282),
-            voting_period_start: Some(1602896282),
-            voting_period_end: Some(1602896282),
+            proposal_period_start: Some(env.block.time),
+            proposal_period_end: Some(env.block.time + 86400),
+            voting_period_start: Some(env.block.time + 86400 * 2),
+            voting_period_end: Some(env.block.time + 86400 * 5),
         }
     }
 
-    fn mock_init(mut deps: &mut Extern<MockStorage, MockApi, MockQuerier>) {
-        let msg = default_init_msg();
+    fn mock_init(mut deps: &mut Extern<MockStorage, MockApi, MockQuerier>, msg: InitMsg) {
         let info = mock_info("creator", &coins(1000, "earth"));
         let _res = init(&mut deps, mock_env(), info, msg).unwrap();
     }
@@ -39,29 +35,9 @@ mod tests {
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
 
-        let msg = InitMsg {
-            // count: 17
-            name: "My Funding Round".to_string(),
-            proposer_whitelist: vec![
-                HumanAddr::from("proposer_0"),
-                HumanAddr::from("proposer_1"),
-                HumanAddr::from("proposer_2"),
-            ],
-            voter_whitelist: vec![
-                HumanAddr::from("voter_0"),
-                HumanAddr::from("voter_1"),
-                HumanAddr::from("voter_2"),
-            ],
-            // proposal_period_start: None,
-            // proposal_period_end: None,
-            // voting_period_start: None,
-            // voting_period_end: None,
-            proposal_period_start: Some(1602896282),
-            proposal_period_end: Some(1602896282),
-            voting_period_start: Some(1602896282),
-            voting_period_end: Some(1602896282),
-        };
+        let msg = default_init_msg();
         let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -100,7 +76,7 @@ mod tests {
     #[test]
     fn create_proposal() {
         let mut deps = mock_dependencies(&[]);
-        mock_init(&mut deps);
+        mock_init(&mut deps, default_init_msg());
 
         // Create proposal.
         let proposal_msg = HandleMsg::CreateProposal {
