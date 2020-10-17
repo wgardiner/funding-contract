@@ -32,6 +32,20 @@ mod tests {
         let _res = init(&mut deps, mock_env(), info, msg).unwrap();
     }
 
+    fn default_proposal_msg() -> HandleMsg {
+        HandleMsg::CreateProposal {
+            name: "My proposal".to_string(),
+            recipient: HumanAddr::from("proposal_recipient"),
+            description: "The proposal description".to_string(),
+            tags: "one two three".to_string(),
+        }
+    }
+
+    fn mock_proposal(mut deps: &mut Extern<MockStorage, MockApi, MockQuerier>, msg: HandleMsg) {
+        let info = mock_info("proposer_0", &coins(1000, "earth"));
+        let _res = handle(&mut deps, mock_env(), info, msg).unwrap();
+    }
+
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
@@ -64,12 +78,7 @@ mod tests {
         mock_init(&mut deps, default_init_msg());
 
         // create proposal.
-        let proposal_msg = HandleMsg::CreateProposal {
-            name: "My proposal".to_string(),
-            recipient: HumanAddr::from("proposal_recipient"),
-            description: "The proposal description".to_string(),
-            tags: "one two three".to_string(),
-        };
+        let proposal_msg = default_proposal_msg();
 
         // try to create a proposal as "any_user"
         let info = mock_info("any_user", &coins(1000, "earth"));
@@ -95,12 +104,7 @@ mod tests {
         mock_init(&mut deps, msg);
 
         // create proposal.
-        let proposal_msg = HandleMsg::CreateProposal {
-            name: "My proposal".to_string(),
-            recipient: HumanAddr::from("proposal_recipient"),
-            description: "The proposal description".to_string(),
-            tags: "one two three".to_string(),
-        };
+        let proposal_msg = default_proposal_msg();
 
         let info = mock_info("creator", &coins(1000, "earth"));
         let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
@@ -127,13 +131,8 @@ mod tests {
         msg.proposer_whitelist = Vec::new();
         mock_init(&mut deps, msg);
 
-        // Create proposal.
-        let proposal_msg = HandleMsg::CreateProposal {
-            name: "My proposal".to_string(),
-            recipient: HumanAddr::from("proposal_recipient"),
-            description: "The proposal description".to_string(),
-            tags: "one two three".to_string(),
-        };
+        // create proposal.
+        let proposal_msg = default_proposal_msg();
 
         // try to create a proposal as "any_user"
         let info = mock_info("any_user", &coins(1000, "earth"));
