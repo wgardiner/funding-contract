@@ -49,6 +49,21 @@ mod tests {
     }
 
     #[test]
+    fn fails_initialization_invalid_proposal_period() {
+        // TODO: Test that proposal start is before the end.
+    }
+
+    #[test]
+    fn fails_initialization_invalid_voting_period() {
+        // TODO: Test that vote start is before the end.
+    }
+
+    #[test]
+    fn fails_initialization_voting_before_proposal() {
+        // TODO: Test that proposal period ends before the voting period.
+    }
+
+    #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
 
@@ -113,7 +128,9 @@ mod tests {
     }
 
     #[test]
-    fn fails_create_proposal_insufficient_data() {}
+    fn fails_create_proposal_insufficient_data() {
+        // TODO: Test creating a proposal with missing data.
+    }
 
     #[test]
     fn create_proposal_no_proposer_list() {
@@ -155,6 +172,8 @@ mod tests {
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
         assert_eq!(1, state.proposals.len(),);
+
+        // TODO: Test query response for the proposal.
     }
 
     #[test]

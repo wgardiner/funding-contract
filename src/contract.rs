@@ -80,11 +80,10 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::CreateVote { proposal_id } => {
             try_create_vote(deps, env, info, state, proposal_id)
         }
-        // HandleMsg::Increment {} => try_increment(deps),
-        // HandleMsg::Reset { count } => try_reset(deps, info, count),
     }
 }
 
+// TODO: Return errors.
 pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -140,6 +139,7 @@ pub fn validate_sender(addr: CanonicalAddr, list: Vec<CanonicalAddr>) -> bool {
     return list.len() == 0 || list.contains(&addr);
 }
 
+// TODO: Return errors.
 pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -173,33 +173,8 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     Ok(HandleResponse::default())
 }
 
-// pub fn try_increment<S: Storage, A: Api, Q: Querier>(
-//     deps: &mut Extern<S, A, Q>,
-// ) -> Result<HandleResponse, ContractError> {
-//     config(&mut deps.storage).update(|mut state| -> Result<_, ContractError> {
-//         state.count += 1;
-//         Ok(state)
-//     })?;
-
-//     Ok(HandleResponse::default())
-// }
-
-// pub fn try_reset<S: Storage, A: Api, Q: Querier>(
-//     deps: &mut Extern<S, A, Q>,
-//     info: MessageInfo,
-//     count: i32,
-// ) -> Result<HandleResponse, ContractError> {
-//     let api = &deps.api;
-//     config(&mut deps.storage).update(|mut state| -> Result<_, ContractError> {
-//         if api.canonical_address(&info.sender)? != state.owner {
-//             return Err(ContractError::Unauthorized {});
-//         }
-//         state.count = count;
-//         Ok(state)
-//     })?;
-//     Ok(HandleResponse::default())
-// }
-
+// TODO: Add query for Proposal List.
+// TODO: Add query Proposal + Votes by Proposal ID.
 pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     _env: Env,
@@ -234,18 +209,3 @@ fn query_state<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdRes
         voting_period_end: state.voting_period_end,
     })
 }
-
-// pub fn query<S: Storage, A: Api, Q: Querier>(
-//     deps: &Extern<S, A, Q>,
-//     _env: Env,
-//     msg: QueryMsg,
-// ) -> StdResult<Binary> {
-//     match msg {
-//         QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
-//     }
-// }
-
-// fn query_count<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<CountResponse> {
-//     let state = config_read(&deps.storage).load()?;
-//     Ok(CountResponse { count: state.count })
-// }

@@ -28,22 +28,6 @@ pub struct State {
     pub votes: Vec<Vote>,
 }
 
-// impl State {
-//     pub fn is_expired(&self, env: &Env) -> bool {
-//         if let Some(proposal_period_end) = self.proposal_period_end {
-//             if env.block.time > proposal_period_end {
-//                 return true
-//             }
-//         }
-//         if let Some(voting_period_end) = self.voting_period_end {
-//             if env.block.time > voting_period_end {
-//                 return true
-//             }
-//         }
-//         false
-//     }
-// }
-
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Proposal {
     pub id: u32,
