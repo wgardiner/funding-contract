@@ -1,11 +1,19 @@
 use cosmwasm_std::{
     to_binary, Api, Binary, Env, Extern, HandleResponse, InitResponse, MessageInfo, Querier,
-    StdResult, Storage, CanonicalAddr,
+    StdResult, Storage, CanonicalAddr, HumanAddr
 };
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, HandleMsg, InitMsg, QueryMsg};
-use crate::state::{config, config_read, State};
+use crate::msg::{StateResponse, HandleMsg, InitMsg, QueryMsg, CreateProposal};
+use crate::state::{config, config_read, State, Vote, Proposal};
+
+// pub fn mapHumanToCanonicalAddr(list: Vec<_>) -> Vec<CanonicalAddr> {
+//     list
+//         .iter()
+//         .map(|x| deps.api.canonical_address(x))
+//         .filter_map(Result::ok)
+//         .collect()
+// }
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
@@ -16,18 +24,32 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
     // let pw: Vec<CanonicalAddr> = msg.proposer_whitelist.into_iter().map(|x| deps.api.canonical_address(&x)).collect::<Vec<CanonicalAddr>>()?;
-    let pw: Vec<_> = msg.proposer_whitelist.into_iter().map(|x| deps.api.canonical_address(&x)).filter_map(Result::ok).collect::<Vec<_>>();
+    // TODO: this should probably just fail if the user attempts to instantiate the contract
+    // with an address that can't be converted to cannonical form in the whitelists.
+    // Currently it'll just filter out any addresses that fail conversion.
+    let proposer_whitelist: Vec<_> = msg.proposer_whitelist
+        .iter()
+        .map(|x| deps.api.canonical_address(x))
+        .filter_map(Result::ok)
+        .collect();
+    let voter_whitelist: Vec<_> = msg.voter_whitelist
+        .iter()
+        .map(|x| deps.api.canonical_address(x))
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
+
     let state = State {
         // count: msg.count,
+        name: msg.name,
         owner: deps.api.canonical_address(&info.sender)?,
-        proposer_whitelist: pw,
-        // voter_whitelist: Vec::new(),
+        proposer_whitelist,
+        voter_whitelist,
         // // proposal_min_period: 10,
         // // voting_min_period: 10,
-        // proposal_period_start: Some(1602868551443),
-        // proposal_period_end: Some(1602868551445),
-        // voting_period_start: Some(1602868551443),
-        // voting_period_end: Some(1602868551443),
+        proposal_period_start: msg.proposal_period_start,
+        proposal_period_end: msg.proposal_period_end,
+        voting_period_start: msg.voting_period_start,
+        voting_period_end: msg.voting_period_end,
         // funding_formula: Some("QUADRATIC".to_string()),
         votes: Vec::new(),
         proposals: Vec::new(),
@@ -38,18 +60,88 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     // TODO: handle expired with Err
 }
 
-// // And declare a custom Error variant for the ones where you will want to make use of it
-// pub fn handle<S: Storage, A: Api, Q: Querier>(
-//     deps: &mut Extern<S, A, Q>,
-//     _env: Env,
-//     info: MessageInfo,
-//     msg: HandleMsg,
-// ) -> Result<HandleResponse, ContractError> {
-//     match msg {
-//         // HandleMsg::Increment {} => try_increment(deps),
-//         // HandleMsg::Reset { count } => try_reset(deps, info, count),
-//     }
-// }
+// And declare a custom Error variant for the ones where you will want to make use of it
+pub fn handle<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    info: MessageInfo,
+    msg: HandleMsg,
+) -> Result<HandleResponse, ContractError> {
+    let state = config_read(&deps.storage).load()?;
+    match msg {
+        HandleMsg::CreateProposal {
+            name,
+            description,
+            recipient,
+            tags,
+        } => try_create_proposal(deps, env, info, CreateProposal{
+            name,
+            description,
+            recipient,
+            tags,
+        }),
+        HandleMsg::CreateVote { proposal_id } => try_create_vote(deps, env, info, state, proposal_id),
+        // HandleMsg::Increment {} => try_increment(deps),
+        // HandleMsg::Reset { count } => try_reset(deps, info, count),
+    }
+}
+
+pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    info: MessageInfo,
+    // state: State,
+    msg: CreateProposal,
+) -> Result<HandleResponse, ContractError> {
+    config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
+        // state.count += 1;
+        // TODO: check if sender matches whitelist
+        if validate_sender(deps.api.canonical_address(&info.sender)?) {
+            state.proposals.push(Proposal {
+                id: state.proposals.len() as u32,
+                name: msg.name,
+                description: msg.description,
+                tags: msg.description,
+                recipient: deps.api.canonical_address(&msg.recipient)?,
+            })
+        }
+        Ok(state)
+    })?;
+
+    Ok(HandleResponse::default())
+}
+
+pub fn validate_sender(addr: CanonicalAddr) -> bool {
+    // if deps.api.canonical_address(&env.message.sender)? != state.arbiter {
+    //     Err(StdError::unauthorized())
+    // } else if state.is_expired(&env) {
+    //     Err(StdError::generic_err("escrow expired"))
+    // } else {
+        return true
+    // }
+}
+
+pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    info: MessageInfo,
+    state: State,
+    proposal_id: u32,
+) -> Result<HandleResponse, ContractError> {
+    config(&mut deps.storage).update(|mut state| -> Result<_, ContractError> {
+        // TODO: check if sender matches whitelist
+        if validate_sender(deps.api.canonical_address(&info.sender)?) {
+            state.votes.push(Vote {
+                voter: deps.api.canonical_address(&info.sender)?,
+                proposal: proposal_id,
+                amount: info.sent_funds,
+            })
+        }
+        Ok(state)
+    })?;
+
+    Ok(HandleResponse::default())
+}
 
 // pub fn try_increment<S: Storage, A: Api, Q: Querier>(
 //     deps: &mut Extern<S, A, Q>,
@@ -84,16 +176,30 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
+        QueryMsg::GetState {} => to_binary(&query_state(deps)?),
     }
 }
 
-fn query_count<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<CountResponse> {
+fn query_state<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<StateResponse> {
     let state = config_read(&deps.storage).load()?;
-    Ok(CountResponse {
-        // count: state.proposer_whitelist.iter().map(|x| deps.api.human_address(x)).collect()?,
-        count: state.proposer_whitelist,
-
+    let proposer_whitelist = state.proposer_whitelist
+        .iter()
+        .map(|x| deps.api.human_address(x))
+        .filter_map(Result::ok)
+        .collect();
+    let voter_whitelist = state.voter_whitelist
+        .iter()
+        .map(|x| deps.api.human_address(x))
+        .filter_map(Result::ok)
+        .collect();
+    Ok(StateResponse {
+        name: state.name,
+        proposer_whitelist,
+        voter_whitelist,
+        proposal_period_start: state.proposal_period_start,
+        proposal_period_end: state.proposal_period_end,
+        voting_period_start: state.voting_period_start,
+        voting_period_end: state.voting_period_end,
     })
 }
 
@@ -124,8 +230,25 @@ mod tests {
 
         let msg = InitMsg {
             // count: 17
-            proposer_whitelist: vec![HumanAddr::from("proposer_0")],
-
+            name: "My Funding Round".to_string(),
+            proposer_whitelist: vec![
+                HumanAddr::from("proposer_0"),
+                HumanAddr::from("proposer_1"),
+                HumanAddr::from("proposer_2"),
+            ],
+            voter_whitelist: vec![
+                HumanAddr::from("voter_0"),
+                HumanAddr::from("voter_1"),
+                HumanAddr::from("voter_2"),
+            ],
+            // proposal_period_start: None,
+            // proposal_period_end: None,
+            // voting_period_start: None,
+            // voting_period_end: None,
+            proposal_period_start: Some(1602896282),
+            proposal_period_end: Some(1602896282),
+            voting_period_start: Some(1602896282),
+            voting_period_end: Some(1602896282),
         };
         let info = mock_info("creator", &coins(1000, "earth"));
 
@@ -134,11 +257,17 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // it worked, let's query the state
-        let res = query(&deps, mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
+        let res = query(&deps, mock_env(), QueryMsg::GetState {}).unwrap();
+        let value: StateResponse = from_binary(&res).unwrap();
         // let value: CountResponse = from_binary(&res).unwrap();
-        println!("{:?}", value);
+        // println!("full response {:?}", value);
+        // println!("{:?}", value.proposer_whitelist[0]);
+        assert_eq!(3, value.proposer_whitelist.len());
+        assert_eq!(HumanAddr::from("proposer_0"), value.proposer_whitelist[0]);
+        assert_eq!(3, value.voter_whitelist.len());
+        assert_eq!(HumanAddr::from("voter_0"), value.voter_whitelist[0]);
         // assert_eq!(17, value.count);
+        assert_eq!("My Funding Round", value.name);
     }
 
     // #[test]

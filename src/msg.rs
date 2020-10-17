@@ -1,4 +1,4 @@
-use cosmwasm_std::{Coin, HumanAddr, CanonicalAddr};
+use cosmwasm_std::{HumanAddr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -6,14 +6,15 @@ use serde::{Deserialize, Serialize};
 pub struct InitMsg {
     // pub count: i32,
     // Coins for funding pool are attached to TX
+    pub name: String,
     pub proposer_whitelist: Vec<HumanAddr>,
-    // pub voter_whitelist: Vec<HumanAddr>,
+    pub voter_whitelist: Vec<HumanAddr>,
     // pub proposal_min_period: Option<u32>,
     // pub voting_min_period: Option<u32>,
-    // pub proposal_period_start: Option<u64>,
-    // pub proposal_period_end: Option<u64>,
-    // pub voting_period_start: Option<u64>,
-    // pub voting_period_end: Option<u64>,
+    pub proposal_period_start: Option<u64>,
+    pub proposal_period_end: Option<u64>,
+    pub voting_period_start: Option<u64>,
+    pub voting_period_end: Option<u64>,
     // pub funding_formula: Option<String>,
 }
 
@@ -22,16 +23,32 @@ pub struct InitMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
-    Increment {},
-    Reset { count: i32 },
+    // Increment {},
+    // Reset { count: i32 },
+    // Create(CreateProposal),
+    CreateProposal {
+        name: String,
+        recipient: HumanAddr,
+        description: String,
+        tags: String,
+    },
+    CreateVote {
+        proposal_id: u32,
+    },
+}
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CreateProposal {
+    pub name: String,
+    pub recipient: HumanAddr,
+    pub description: String,
+    pub tags: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // GetCount returns the current count as a json-encoded number
-    GetCount {},
+    GetState {},
 }
 
 // // We define a custom struct for each query response
@@ -41,7 +58,13 @@ pub enum QueryMsg {
 // }
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CountResponse {
-    pub count: Vec<CanonicalAddr>,
-    // pub count: HumanAddr,
+pub struct StateResponse {
+    // pub count: Vec<CanonicalAddr>,
+    pub name: String,
+    pub proposer_whitelist: Vec<HumanAddr>,
+    pub voter_whitelist: Vec<HumanAddr>,
+    pub proposal_period_start: Option<u64>,
+    pub proposal_period_end: Option<u64>,
+    pub voting_period_start: Option<u64>,
+    pub voting_period_end: Option<u64>,
 }
