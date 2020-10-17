@@ -142,13 +142,8 @@ pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {
 }
 
 pub fn validate_sender(addr: CanonicalAddr, list: Vec<CanonicalAddr>) -> bool {
-    // if deps.api.canonical_address(&env.message.sender)? != state.arbiter {
-    //     Err(StdError::unauthorized())
-    // } else if state.is_expired(&env) {
-    //     Err(StdError::generic_err("escrow expired"))
-    // } else {
-        true
-    // }
+    // TODO: Should we return error messages here, or in the calling function?
+    return list.len() == 0 || list.contains(&addr);
 }
 
 pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(

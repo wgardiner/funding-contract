@@ -60,7 +60,27 @@ mod tests {
 
     #[test]
     fn fails_create_proposal_invalid_address() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
 
+        // create proposal.
+        let proposal_msg = HandleMsg::CreateProposal {
+            name: "My proposal".to_string(),
+            recipient: HumanAddr::from("proposal_recipient"),
+            description: "The proposal description".to_string(),
+            tags: "one two three".to_string(),
+        };
+
+        // try to create a proposal as "any_user"
+        let info = mock_info("any_user", &coins(1000, "earth"));
+        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+
+        // proposal should not have been created.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(
+            0,
+            state.proposals.len(),
+        );
     }
 
     #[test]
@@ -99,6 +119,35 @@ mod tests {
     }
 
     #[test]
+    fn create_proposal_no_proposer_list() {
+        let mut deps = mock_dependencies(&[]);
+
+        // modify init message to empty proposer whitelist.
+        let mut msg = default_init_msg();
+        msg.proposer_whitelist = Vec::new();
+        mock_init(&mut deps, msg);
+
+        // Create proposal.
+        let proposal_msg = HandleMsg::CreateProposal {
+            name: "My proposal".to_string(),
+            recipient: HumanAddr::from("proposal_recipient"),
+            description: "The proposal description".to_string(),
+            tags: "one two three".to_string(),
+        };
+
+        // try to create a proposal as "any_user"
+        let info = mock_info("any_user", &coins(1000, "earth"));
+        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+
+        // proposal should be created.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(
+            1,
+            state.proposals.len(),
+        );
+    }
+
+    #[test]
     fn create_proposal() {
         let mut deps = mock_dependencies(&[]);
         mock_init(&mut deps, default_init_msg());
@@ -111,8 +160,8 @@ mod tests {
             tags: "one two three".to_string(),
         };
 
-        let info = mock_info("creator", &coins(1000, "earth"));
-        let res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let info = mock_info("proposer_0", &coins(1000, "earth"));
+        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
 
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
