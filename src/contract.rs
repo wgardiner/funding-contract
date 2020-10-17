@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use cosmwasm_std::{
     to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
     MessageInfo, Querier, StdResult, Storage,
@@ -84,6 +86,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 }
 
 // TODO: Return errors.
+// TODO: Can we decrease the number of arguments?
 pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -131,12 +134,12 @@ pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {
         return false;
     }
 
-    return true;
+    true
 }
 
 pub fn validate_sender(addr: CanonicalAddr, list: Vec<CanonicalAddr>) -> bool {
     // TODO: Should we return error messages here, or in the calling function?
-    return list.len() == 0 || list.contains(&addr);
+    list.is_empty() || list.contains(&addr)
 }
 
 // TODO: Return errors.
@@ -162,7 +165,7 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     if sender_is_valid && period_is_valid && proposal_is_valid {
         config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
             state.votes.push(Vote {
-                voter: voter,
+                voter,
                 proposal: proposal_id,
                 amount: info.sent_funds,
             });
