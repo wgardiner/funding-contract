@@ -74,12 +74,12 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             description,
             recipient,
             tags,
-        } => try_create_proposal(deps, env, info, CreateProposal{
+        } => try_create_proposal(deps, env, info,
+            recipient,
             name,
             description,
-            recipient,
             tags,
-        }),
+        ),
         HandleMsg::CreateVote { proposal_id } => try_create_vote(deps, env, info, state, proposal_id),
         // HandleMsg::Increment {} => try_increment(deps),
         // HandleMsg::Reset { count } => try_reset(deps, info, count),
@@ -90,34 +90,51 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     info: MessageInfo,
-    // state: State,
-    msg: CreateProposal,
+    state: State,
+    // msg: CreateProposal,
+    recipient: HumanAddr,
+    name: String,
+    description: String,
+    tags: String,
 ) -> Result<HandleResponse, ContractError> {
-    config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
-        // state.count += 1;
-        // TODO: check if sender matches whitelist
-        if validate_sender(deps.api.canonical_address(&info.sender)?) {
+    // TODO: check if sender matches whitelist
+    let senderAddr = deps.api.canonical_address(&info.sender)?;
+    let recipientAddr = deps.api.canonical_address(&recipient)?;
+    let sender_is_valid = validate_sender(senderAddr, state.proposer_whitelist);
+    let period_is_valid = validate_period(
+        env.block.time,
+        state.proposal_period_start.unwrap(),
+        state.proposal_period_end.unwrap()
+    );
+    if sender_is_valid && period_is_valid {
+        config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
+            // state.count += 1;
             state.proposals.push(Proposal {
                 id: state.proposals.len() as u32,
-                name: msg.name,
-                description: msg.description,
-                tags: msg.description,
-                recipient: deps.api.canonical_address(&msg.recipient)?,
-            })
-        }
-        Ok(state)
-    })?;
+                name,
+                description,
+                tags,
+                recipient: recipientAddr,
+            });
+            Ok(state)
+        })?;
+    }
+
 
     Ok(HandleResponse::default())
 }
 
-pub fn validate_sender(addr: CanonicalAddr) -> bool {
+pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {
+    true
+}
+
+pub fn validate_sender(addr: CanonicalAddr, list: Vec<CanonicalAddr>) -> bool {
     // if deps.api.canonical_address(&env.message.sender)? != state.arbiter {
     //     Err(StdError::unauthorized())
     // } else if state.is_expired(&env) {
     //     Err(StdError::generic_err("escrow expired"))
     // } else {
-        return true
+        true
     // }
 }
 
@@ -130,7 +147,13 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
 ) -> Result<HandleResponse, ContractError> {
     config(&mut deps.storage).update(|mut state| -> Result<_, ContractError> {
         // TODO: check if sender matches whitelist
-        if validate_sender(deps.api.canonical_address(&info.sender)?) {
+        let sender_is_valid = validate_sender(deps.api.canonical_address(&info.sender)?, state.voter_whitelist);
+        let period_is_valid = validate_period(
+            env.block.time,
+            state.voting_period_start.unwrap(),
+            state.voting_period_end.unwrap(),
+        );
+        if sender_is_valid && period_is_valid {
             state.votes.push(Vote {
                 voter: deps.api.canonical_address(&info.sender)?,
                 proposal: proposal_id,
