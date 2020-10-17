@@ -65,7 +65,32 @@ mod tests {
 
     #[test]
     fn fails_create_proposal_invalid_period() {
+        let mut deps = mock_dependencies(&[]);
+        let env = mock_env();
 
+        // change proposal time so it has already expired.
+        let mut msg = default_init_msg();
+        msg.proposal_period_start = Some(env.block.time - 86400 * 5);
+        msg.proposal_period_end = Some(env.block.time - 86400 * 1);
+        mock_init(&mut deps, msg);
+
+        // create proposal.
+        let proposal_msg = HandleMsg::CreateProposal {
+            name: "My proposal".to_string(),
+            recipient: HumanAddr::from("proposal_recipient"),
+            description: "The proposal description".to_string(),
+            tags: "one two three".to_string(),
+        };
+
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+
+        // proposal should not have been created.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(
+            0,
+            state.proposals.len(),
+        );
     }
 
     #[test]

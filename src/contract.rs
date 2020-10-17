@@ -129,7 +129,16 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
 }
 
 pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {
-    true
+    // TODO: Should we return error messages here, or in the calling function?
+    if time < period_start {
+        return false;
+    }
+
+    if time > period_end {
+        return false;
+    }
+
+    return true;
 }
 
 pub fn validate_sender(addr: CanonicalAddr, list: Vec<CanonicalAddr>) -> bool {
