@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use project_name::msg::{StateResponse, HandleMsg, InitMsg, QueryMsg};
+use project_name::msg::{HandleMsg, InitMsg, QueryMsg, StateResponse};
 use project_name::state::State;
 
 fn main() {

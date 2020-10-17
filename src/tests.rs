@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use crate::contract::{init, handle, query};
-    use crate::msg::{StateResponse, HandleMsg, InitMsg, QueryMsg};
-    use crate::state::{config_read};
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MockStorage, MockApi, MockQuerier};
-    use cosmwasm_std::{ Extern, HumanAddr, coins, from_binary};
+    use crate::contract::{handle, init, query};
+    use crate::msg::{HandleMsg, InitMsg, QueryMsg, StateResponse};
+    use crate::state::config_read;
+    use cosmwasm_std::testing::{
+        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+    };
+    use cosmwasm_std::{coins, from_binary, Extern, HumanAddr};
 
     fn default_init_msg() -> InitMsg {
         let env = mock_env();
@@ -49,7 +51,6 @@ mod tests {
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
-        let env = mock_env();
 
         let msg = default_init_msg();
         let info = mock_info("creator", &coins(1000, "earth"));
@@ -86,10 +87,7 @@ mod tests {
 
         // proposal should not have been created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            0,
-            state.proposals.len(),
-        );
+        assert_eq!(0, state.proposals.len(),);
     }
 
     #[test]
@@ -111,16 +109,11 @@ mod tests {
 
         // proposal should not have been created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            0,
-            state.proposals.len(),
-        );
+        assert_eq!(0, state.proposals.len(),);
     }
 
     #[test]
-    fn fails_create_proposal_insufficient_data() {
-
-    }
+    fn fails_create_proposal_insufficient_data() {}
 
     #[test]
     fn create_proposal_no_proposer_list() {
@@ -140,10 +133,7 @@ mod tests {
 
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            1,
-            state.proposals.len(),
-        );
+        assert_eq!(1, state.proposals.len(),);
     }
 
     #[test]
@@ -164,10 +154,7 @@ mod tests {
 
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            1,
-            state.proposals.len(),
-        );
+        assert_eq!(1, state.proposals.len(),);
     }
 
     #[test]
@@ -177,9 +164,7 @@ mod tests {
         mock_proposal(&mut deps, default_proposal_msg());
 
         // create vote.
-        let vote_msg = HandleMsg::CreateVote {
-            proposal_id: 1,
-        };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 1 };
 
         // try to create a vote as "any user"
         let info = mock_info("any_user", &coins(1000, "earth"));
@@ -193,10 +178,7 @@ mod tests {
 
         // vote should not be created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            0,
-            state.votes.len(),
-        );
+        assert_eq!(0, state.votes.len(),);
     }
 
     #[test]
@@ -208,9 +190,7 @@ mod tests {
 
         // create vote.
         // use an invalid proposal id.
-        let vote_msg = HandleMsg::CreateVote {
-            proposal_id: 3,
-        };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 3 };
         let info = mock_info("voter_0", &coins(1000, "earth"));
 
         // set the time to the voting period.
@@ -222,11 +202,7 @@ mod tests {
 
         // vote should not be created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            0,
-            state.votes.len(),
-        );
-
+        assert_eq!(0, state.votes.len(),);
     }
 
     #[test]
@@ -236,9 +212,7 @@ mod tests {
         mock_proposal(&mut deps, default_proposal_msg());
 
         // create vote.
-        let vote_msg = HandleMsg::CreateVote {
-            proposal_id: 1,
-        };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 1 };
         let info = mock_info("voter_0", &coins(1000, "earth"));
 
         // set the time to the proposal period.
@@ -250,10 +224,7 @@ mod tests {
 
         // vote should not be created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            0,
-            state.votes.len(),
-        );
+        assert_eq!(0, state.votes.len(),);
     }
 
     #[test]
@@ -268,9 +239,7 @@ mod tests {
         mock_proposal(&mut deps, default_proposal_msg());
 
         // create vote.
-        let vote_msg = HandleMsg::CreateVote {
-            proposal_id: 1,
-        };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 1 };
 
         // try to create a vote as "any user"
         let info = mock_info("any_user", &coins(1000, "earth"));
@@ -284,10 +253,7 @@ mod tests {
 
         // vote should be created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            1,
-            state.votes.len(),
-        );
+        assert_eq!(1, state.votes.len(),);
         // TODO: Check that the voter address is correct. The below code fails.
         //let voter = deps.api.canonical_address(&info.sender)?;
         //assert_eq!(voter, state.votes[0].voter);
@@ -302,9 +268,7 @@ mod tests {
         mock_proposal(&mut deps, default_proposal_msg());
 
         // create vote.
-        let vote_msg = HandleMsg::CreateVote {
-            proposal_id: 2,
-        };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 2 };
         let info = mock_info("voter_0", &coins(1000, "earth"));
 
         // set the time to the voting period.
@@ -316,10 +280,7 @@ mod tests {
 
         // vote should be created.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(
-            1,
-            state.votes.len(),
-        );
+        assert_eq!(1, state.votes.len(),);
         // TODO: Check that the voter address is correct. The below code fails.
         //let voter = deps.api.canonical_address(&info.sender)?;
         //assert_eq!(voter, state.votes[0].voter);
