@@ -2,7 +2,7 @@
 mod tests {
     use crate::contract::{handle, init, query};
     use crate::error::ContractError;
-    use crate::msg::{HandleMsg, InitMsg, QueryMsg, StateResponse};
+    use crate::msg::{HandleMsg, InitMsg, ProposalListResponse, QueryMsg, StateResponse};
     use crate::state::config_read;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
@@ -161,6 +161,17 @@ mod tests {
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
         assert_eq!(1, state.proposals.len(),);
+
+        // test Proposal List query response.
+        let res = query(&mut deps, mock_env(), QueryMsg::ProposalList {}).unwrap();
+        let value: ProposalListResponse = from_binary(&res).unwrap();
+        assert_eq!(1, value.proposals.len());
+        assert_eq!("My proposal", value.proposals[0].name);
+        let recipient = deps
+            .api
+            .canonical_address(&HumanAddr::from("proposal_recipient"))
+            .unwrap();
+        assert_eq!(recipient, value.proposals[0].recipient);
     }
 
     #[test]
@@ -183,7 +194,16 @@ mod tests {
         let state = config_read(&deps.storage).load().unwrap();
         assert_eq!(1, state.proposals.len(),);
 
-        // TODO: Test query response for the proposal.
+        // test Proposal List query response.
+        let res = query(&mut deps, mock_env(), QueryMsg::ProposalList {}).unwrap();
+        let value: ProposalListResponse = from_binary(&res).unwrap();
+        assert_eq!(1, value.proposals.len());
+        assert_eq!("My proposal", value.proposals[0].name);
+        let recipient = deps
+            .api
+            .canonical_address(&HumanAddr::from("proposal_recipient"))
+            .unwrap();
+        assert_eq!(recipient, value.proposals[0].recipient);
     }
 
     #[test]

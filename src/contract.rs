@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 
 use crate::error::ContractError;
-use crate::msg::{HandleMsg, InitMsg, QueryMsg, StateResponse};
+use crate::msg::{HandleMsg, InitMsg, ProposalListResponse, QueryMsg, StateResponse};
 use crate::state::{config, config_read, Proposal, State, Vote};
 
 // pub fn mapHumanToCanonicalAddr(list: Vec<_>) -> Vec<CanonicalAddr> {
@@ -193,7 +193,6 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     Ok(HandleResponse::default())
 }
 
-// TODO: Add query for Proposal List.
 // TODO: Add query Proposal + Votes by Proposal ID.
 pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
@@ -202,6 +201,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetState {} => to_binary(&query_state(deps)?),
+        QueryMsg::ProposalList {} => to_binary(&query_proposal_list(deps)?),
     }
 }
 
@@ -228,4 +228,12 @@ fn query_state<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdRes
         voting_period_start: state.voting_period_start,
         voting_period_end: state.voting_period_end,
     })
+}
+
+fn query_proposal_list<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+) -> StdResult<ProposalListResponse> {
+    let state = config_read(&deps.storage).load()?;
+    let proposals = state.proposals;
+    Ok(ProposalListResponse { proposals })
 }
