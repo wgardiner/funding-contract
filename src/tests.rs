@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::contract::{handle, init, query};
+    use crate::error::ContractError;
     use crate::msg::{HandleMsg, InitMsg, QueryMsg, StateResponse};
     use crate::state::config_read;
-    use crate::error::ContractError;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
@@ -101,7 +101,7 @@ mod tests {
         let info = mock_info("any_user", &coins(1000, "earth"));
         let res = handle(&mut deps, mock_env(), info, proposal_msg);
         match res {
-            Err(ContractError::Unauthorized { list_type: _}) => {}
+            Err(ContractError::Unauthorized { list_type: _ }) => {}
             _ => panic!("Must return error"),
         }
 
@@ -128,7 +128,7 @@ mod tests {
         let res = handle(&mut deps, mock_env(), info, proposal_msg);
 
         match res {
-            Err(ContractError::InvalidPeriod { period_type: _}) => {}
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
             _ => panic!("Must return error"),
         }
 
@@ -205,7 +205,7 @@ mod tests {
         // send message.
         let res = handle(&mut deps, env, info, vote_msg);
         match res {
-            Err(ContractError::Unauthorized { list_type: _}) => {}
+            Err(ContractError::Unauthorized { list_type: _ }) => {}
             _ => panic!("Must return error"),
         }
 
@@ -233,7 +233,7 @@ mod tests {
         // send message.
         let res = handle(&mut deps, env, info, vote_msg);
         match res {
-            Err(ContractError::InvalidProposal { id: _}) => {}
+            Err(ContractError::InvalidProposal { id: _ }) => {}
             _ => panic!("Must return error"),
         }
 
@@ -259,10 +259,9 @@ mod tests {
         // send message.
         let res = handle(&mut deps, env, info, vote_msg);
         match res {
-            Err(ContractError::InvalidPeriod { period_type: _}) => {}
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
             _ => panic!("Must return error"),
         }
-
 
         // vote should not be created.
         let state = config_read(&deps.storage).load().unwrap();

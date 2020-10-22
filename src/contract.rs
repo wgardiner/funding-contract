@@ -101,7 +101,9 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     let recipient_addr = deps.api.canonical_address(&recipient)?;
     let sender_is_valid = validate_sender(sender_addr, state.proposer_whitelist);
     if !sender_is_valid {
-        return Err(ContractError::Unauthorized { list_type: "proposer".to_string() });
+        return Err(ContractError::Unauthorized {
+            list_type: "proposer".to_string(),
+        });
     }
     let period_is_valid = validate_period(
         env.block.time,
@@ -109,7 +111,9 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
         state.proposal_period_end.unwrap(),
     );
     if !period_is_valid {
-        return Err(ContractError::InvalidPeriod { period_type: "proposal".to_string() });
+        return Err(ContractError::InvalidPeriod {
+            period_type: "proposal".to_string(),
+        });
     }
     if sender_is_valid && period_is_valid {
         config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
@@ -156,7 +160,9 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
         state.voter_whitelist,
     );
     if !sender_is_valid {
-        return Err(ContractError::Unauthorized { list_type: "voter".to_string() });
+        return Err(ContractError::Unauthorized {
+            list_type: "voter".to_string(),
+        });
     }
     let period_is_valid = validate_period(
         env.block.time,
@@ -164,7 +170,9 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
         state.voting_period_end.unwrap(),
     );
     if !period_is_valid {
-        return Err(ContractError::InvalidPeriod { period_type: "voting".to_string() });
+        return Err(ContractError::InvalidPeriod {
+            period_type: "voting".to_string(),
+        });
     }
     let proposal_is_valid = state.proposals.len() as u32 >= proposal_id;
     if !proposal_is_valid {
