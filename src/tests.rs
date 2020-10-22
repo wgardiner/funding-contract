@@ -231,7 +231,11 @@ mod tests {
         env.block.time = env.block.time + 86400 * 3;
 
         // send message.
-        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+        let res = handle(&mut deps, env, info, vote_msg);
+        match res {
+            Err(ContractError::InvalidProposal { id: _}) => {}
+            _ => panic!("Must return error"),
+        }
 
         // vote should not be created.
         let state = config_read(&deps.storage).load().unwrap();

@@ -167,6 +167,9 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
         return Err(ContractError::InvalidPeriod { period_type: "voting".to_string() });
     }
     let proposal_is_valid = state.proposals.len() as u32 >= proposal_id;
+    if !proposal_is_valid {
+        return Err(ContractError::InvalidProposal { id: proposal_id });
+    }
     let voter = deps.api.canonical_address(&info.sender)?;
     if sender_is_valid && period_is_valid && proposal_is_valid {
         config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
