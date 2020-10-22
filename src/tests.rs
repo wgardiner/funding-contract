@@ -7,7 +7,7 @@ mod tests {
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{coins, from_binary, Extern, HumanAddr};
+    use cosmwasm_std::{coins, from_binary, Api, Extern, HumanAddr};
 
     fn default_init_msg() -> InitMsg {
         let env = mock_env();
@@ -295,9 +295,16 @@ mod tests {
         // vote should be created.
         let state = config_read(&deps.storage).load().unwrap();
         assert_eq!(1, state.votes.len(),);
-        // TODO: Check that the voter address is correct. The below code fails.
-        //let voter = deps.api.canonical_address(&info.sender)?;
-        //assert_eq!(voter, state.votes[0].voter);
+
+        // check voter address.
+        let voter = deps
+            .api
+            .canonical_address(&HumanAddr("any_user".to_string()))
+            .unwrap();
+        assert_eq!(voter, state.votes[0].voter);
+
+        // check amount.
+        assert_eq!(coins(1000, "earth"), state.votes[0].amount);
     }
 
     #[test]
@@ -322,8 +329,15 @@ mod tests {
         // vote should be created.
         let state = config_read(&deps.storage).load().unwrap();
         assert_eq!(1, state.votes.len(),);
-        // TODO: Check that the voter address is correct. The below code fails.
-        //let voter = deps.api.canonical_address(&info.sender)?;
-        //assert_eq!(voter, state.votes[0].voter);
+
+        // check voter address.
+        let voter = deps
+            .api
+            .canonical_address(&HumanAddr("voter_0".to_string()))
+            .unwrap();
+        assert_eq!(voter, state.votes[0].voter);
+
+        // check amount.
+        assert_eq!(coins(1000, "earth"), state.votes[0].amount);
     }
 }
