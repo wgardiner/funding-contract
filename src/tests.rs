@@ -3,6 +3,7 @@ mod tests {
     use crate::contract::{handle, init, query};
     use crate::msg::{HandleMsg, InitMsg, QueryMsg, StateResponse};
     use crate::state::config_read;
+    use crate::error::ContractError;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
@@ -119,8 +120,13 @@ mod tests {
         // create proposal.
         let proposal_msg = default_proposal_msg();
 
-        let info = mock_info("creator", &coins(1000, "earth"));
-        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let info = mock_info("proposer_0", &coins(1000, "earth"));
+        let res = handle(&mut deps, mock_env(), info, proposal_msg);
+
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _}) => {}
+            _ => panic!("Must return error"),
+        }
 
         // proposal should not have been created.
         let state = config_read(&deps.storage).load().unwrap();
@@ -239,7 +245,12 @@ mod tests {
         env.block.time = env.block.time + 86400 * 1;
 
         // send message.
-        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+        let res = handle(&mut deps, env, info, vote_msg);
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _}) => {}
+            _ => panic!("Must return error"),
+        }
+
 
         // vote should not be created.
         let state = config_read(&deps.storage).load().unwrap();

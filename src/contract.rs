@@ -107,6 +107,9 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
         state.proposal_period_start.unwrap(),
         state.proposal_period_end.unwrap(),
     );
+    if !period_is_valid {
+        return Err(ContractError::InvalidPeriod { period_type: "proposal".to_string() });
+    }
     if sender_is_valid && period_is_valid {
         config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
             // state.count += 1;
@@ -125,7 +128,6 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
 }
 
 pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {
-    // TODO: Should we return error messages here, or in the calling function?
     if time < period_start {
         return false;
     }
@@ -160,6 +162,9 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
         state.voting_period_start.unwrap(),
         state.voting_period_end.unwrap(),
     );
+    if !period_is_valid {
+        return Err(ContractError::InvalidPeriod { period_type: "voting".to_string() });
+    }
     let proposal_is_valid = state.proposals.len() as u32 >= proposal_id;
     let voter = deps.api.canonical_address(&info.sender)?;
     if sender_is_valid && period_is_valid && proposal_is_valid {
