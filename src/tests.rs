@@ -243,7 +243,7 @@ mod tests {
 
         // create vote.
         // use an invalid proposal id.
-        let vote_msg = HandleMsg::CreateVote { proposal_id: 3 };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 2 };
         let info = mock_info("voter_0", &coins(1000, "earth"));
 
         // set the time to the voting period.
@@ -300,7 +300,7 @@ mod tests {
         mock_proposal(&mut deps, default_proposal_msg());
 
         // create vote.
-        let vote_msg = HandleMsg::CreateVote { proposal_id: 1 };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 0 };
 
         // try to create a vote as "any user"
         let info = mock_info("any_user", &coins(1000, "earth"));

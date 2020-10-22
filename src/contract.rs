@@ -174,7 +174,7 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
             period_type: "voting".to_string(),
         });
     }
-    let proposal_is_valid = state.proposals.len() as u32 >= proposal_id;
+    let proposal_is_valid = state.proposals.len() as u32 > proposal_id;
     if !proposal_is_valid {
         return Err(ContractError::InvalidProposal { id: proposal_id });
     }
