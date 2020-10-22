@@ -99,7 +99,11 @@ mod tests {
 
         // try to create a proposal as "any_user"
         let info = mock_info("any_user", &coins(1000, "earth"));
-        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let res = handle(&mut deps, mock_env(), info, proposal_msg);
+        match res {
+            Err(ContractError::Unauthorized { list_type: _}) => {}
+            _ => panic!("Must return error"),
+        }
 
         // proposal should not have been created.
         let state = config_read(&deps.storage).load().unwrap();
@@ -199,7 +203,11 @@ mod tests {
         env.block.time = env.block.time + 86400 * 3;
 
         // send message.
-        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+        let res = handle(&mut deps, env, info, vote_msg);
+        match res {
+            Err(ContractError::Unauthorized { list_type: _}) => {}
+            _ => panic!("Must return error"),
+        }
 
         // vote should not be created.
         let state = config_read(&deps.storage).load().unwrap();

@@ -6,8 +6,10 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
+    #[error("Unauthorized: Sender address not in {list_type:?} whitelist")]
+    Unauthorized {
+        list_type: String,
+    },
 
     #[error("Invalid {period_type:?} period")]
     InvalidPeriod {

@@ -85,7 +85,6 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     }
 }
 
-// TODO: Return errors.
 // TODO: Can we decrease the number of arguments?
 pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -98,10 +97,12 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     description: String,
     tags: String,
 ) -> Result<HandleResponse, ContractError> {
-    // TODO: check if sender matches whitelist
     let sender_addr = deps.api.canonical_address(&info.sender)?;
     let recipient_addr = deps.api.canonical_address(&recipient)?;
     let sender_is_valid = validate_sender(sender_addr, state.proposer_whitelist);
+    if !sender_is_valid {
+        return Err(ContractError::Unauthorized { list_type: "proposer".to_string() });
+    }
     let period_is_valid = validate_period(
         env.block.time,
         state.proposal_period_start.unwrap(),
@@ -140,11 +141,9 @@ pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {
 }
 
 pub fn validate_sender(addr: CanonicalAddr, list: Vec<CanonicalAddr>) -> bool {
-    // TODO: Should we return error messages here, or in the calling function?
     list.is_empty() || list.contains(&addr)
 }
 
-// TODO: Return errors.
 pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -152,11 +151,13 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     state: State,
     proposal_id: u32,
 ) -> Result<HandleResponse, ContractError> {
-    // TODO: check if sender matches whitelist
     let sender_is_valid = validate_sender(
         deps.api.canonical_address(&info.sender)?,
         state.voter_whitelist,
     );
+    if !sender_is_valid {
+        return Err(ContractError::Unauthorized { list_type: "voter".to_string() });
+    }
     let period_is_valid = validate_period(
         env.block.time,
         state.voting_period_start.unwrap(),
