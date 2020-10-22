@@ -2,11 +2,13 @@
 
 use cosmwasm_std::{
     to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
-    MessageInfo, Querier, StdResult, Storage,
+    MessageInfo, Querier, StdError, StdResult, Storage,
 };
 
 use crate::error::ContractError;
-use crate::msg::{HandleMsg, InitMsg, ProposalListResponse, QueryMsg, StateResponse};
+use crate::msg::{
+    HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse, QueryMsg, StateResponse,
+};
 use crate::state::{config, config_read, Proposal, State, Vote};
 
 // pub fn mapHumanToCanonicalAddr(list: Vec<_>) -> Vec<CanonicalAddr> {
@@ -202,6 +204,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     match msg {
         QueryMsg::GetState {} => to_binary(&query_state(deps)?),
         QueryMsg::ProposalList {} => to_binary(&query_proposal_list(deps)?),
+        QueryMsg::ProposalState { proposal_id } => query_proposal_state(deps, proposal_id),
     }
 }
 
@@ -236,4 +239,24 @@ fn query_proposal_list<S: Storage, A: Api, Q: Querier>(
     let state = config_read(&deps.storage).load()?;
     let proposals = state.proposals;
     Ok(ProposalListResponse { proposals })
+}
+
+fn query_proposal_state<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    proposal_id: u32,
+) -> StdResult<Binary> {
+    let state = config_read(&deps.storage).load()?;
+    let proposal = match state.proposals.into_iter().find(|p| p.id == proposal_id) {
+        Some(proposal) => Some(proposal),
+        None => return Err(StdError::generic_err("Proposal does not exist")),
+    }
+    .unwrap();
+
+    let votes: Vec<Vote> = state
+        .votes
+        .into_iter()
+        .filter(|v| v.proposal == proposal_id)
+        .collect();
+    let resp = ProposalStateResponse { proposal, votes };
+    to_binary(&resp)
 }

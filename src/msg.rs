@@ -1,4 +1,4 @@
-use crate::state::Proposal;
+use crate::state::{Proposal, Vote};
 use cosmwasm_std::HumanAddr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -49,6 +49,7 @@ pub struct CreateProposal {
 pub enum QueryMsg {
     GetState {},
     ProposalList {},
+    ProposalState { proposal_id: u32 },
 }
 
 // // We define a custom struct for each query response
@@ -72,4 +73,10 @@ pub struct StateResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ProposalListResponse {
     pub proposals: Vec<Proposal>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ProposalStateResponse {
+    pub proposal: Proposal,
+    pub votes: Vec<Vote>,
 }

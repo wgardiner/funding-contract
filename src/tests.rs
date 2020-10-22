@@ -2,7 +2,9 @@
 mod tests {
     use crate::contract::{handle, init, query};
     use crate::error::ContractError;
-    use crate::msg::{HandleMsg, InitMsg, ProposalListResponse, QueryMsg, StateResponse};
+    use crate::msg::{
+        HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse, QueryMsg, StateResponse,
+    };
     use crate::state::config_read;
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
@@ -172,6 +174,18 @@ mod tests {
             .canonical_address(&HumanAddr::from("proposal_recipient"))
             .unwrap();
         assert_eq!(recipient, value.proposals[0].recipient);
+
+        // test Proposal State query response.
+        let res = query(
+            &mut deps,
+            mock_env(),
+            QueryMsg::ProposalState { proposal_id: 0 },
+        )
+        .unwrap();
+        let value: ProposalStateResponse = from_binary(&res).unwrap();
+        assert_eq!("My proposal", value.proposal.name);
+        assert_eq!(recipient, value.proposal.recipient);
+        assert_eq!(0, value.votes.len());
     }
 
     #[test]
@@ -204,6 +218,18 @@ mod tests {
             .canonical_address(&HumanAddr::from("proposal_recipient"))
             .unwrap();
         assert_eq!(recipient, value.proposals[0].recipient);
+
+        // test Proposal State query response.
+        let res = query(
+            &mut deps,
+            mock_env(),
+            QueryMsg::ProposalState { proposal_id: 0 },
+        )
+        .unwrap();
+        let value: ProposalStateResponse = from_binary(&res).unwrap();
+        assert_eq!("My proposal", value.proposal.name);
+        assert_eq!(recipient, value.proposal.recipient);
+        assert_eq!(0, value.votes.len());
     }
 
     #[test]
@@ -325,6 +351,19 @@ mod tests {
 
         // check amount.
         assert_eq!(coins(1000, "earth"), state.votes[0].amount);
+
+        // test Proposal State query response.
+        let res = query(
+            &mut deps,
+            mock_env(),
+            QueryMsg::ProposalState { proposal_id: 0 },
+        )
+        .unwrap();
+        let value: ProposalStateResponse = from_binary(&res).unwrap();
+        assert_eq!("My proposal", value.proposal.name);
+        assert_eq!(1, value.votes.len());
+        assert_eq!(voter, value.votes[0].voter);
+        assert_eq!(coins(1000, "earth"), value.votes[0].amount);
     }
 
     #[test]
@@ -359,5 +398,18 @@ mod tests {
 
         // check amount.
         assert_eq!(coins(1000, "earth"), state.votes[0].amount);
+
+        // test Proposal State query response.
+        let res = query(
+            &mut deps,
+            mock_env(),
+            QueryMsg::ProposalState { proposal_id: 2 },
+        )
+        .unwrap();
+        let value: ProposalStateResponse = from_binary(&res).unwrap();
+        assert_eq!("My proposal", value.proposal.name);
+        assert_eq!(1, value.votes.len());
+        assert_eq!(voter, value.votes[0].voter);
+        assert_eq!(coins(1000, "earth"), value.votes[0].amount);
     }
 }
