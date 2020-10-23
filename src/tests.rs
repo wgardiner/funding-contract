@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use crate::contract::{handle, init, query};
+    use std::collections::HashMap;
+    use crate::contract::{handle, init, query, get_unique_votes_by_voter};
     use crate::error::ContractError;
     use crate::msg::{HandleMsg, InitMsg, ProposalListResponse, QueryMsg, StateResponse};
-    use crate::state::config_read;
+    use crate::state::{config_read, Vote};
+    // use cosmwasm_std::{CanonicalAddr};
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
@@ -360,4 +362,62 @@ mod tests {
         // check amount.
         assert_eq!(coins(1000, "earth"), state.votes[0].amount);
     }
+
+    #[test]
+    fn unique_votes() {
+        let deps = mock_dependencies(&[]);
+        let votes: Vec<Vote> = vec![
+            Vote {
+                voter: deps.api
+                    .canonical_address(&HumanAddr("voter_0".to_string()))
+                    .unwrap(),
+                proposal: 0,
+                amount: coins(1, "earth"),
+            },
+            Vote {
+                voter: deps.api
+                    .canonical_address(&HumanAddr("voter_1".to_string()))
+                    .unwrap(),
+                proposal: 0,
+                amount: coins(1, "earth"),
+            },
+            Vote {
+                voter: deps.api
+                    .canonical_address(&HumanAddr("voter_0".to_string()))
+                    .unwrap(),
+                proposal: 1,
+                amount: coins(1, "earth"),
+            },Vote {
+                voter: deps.api
+                    .canonical_address(&HumanAddr("voter_0".to_string()))
+                    .unwrap(),
+                proposal: 0,
+                amount: coins(1, "earth"),
+            },
+        ];
+        let result = get_unique_votes_by_voter(&votes);
+        // println!("{:#?}", deps.api.human_address(&result[0].voter));
+        // println!("{:?}", &*result[0].voter);
+        assert_eq!(result.len(), 3);
+
+        // let mut unique: HashMap<String, Vote> = HashMap::new();
+        // for vote in votes {
+        //     let tag = format!("{}--{}", vote.voter, vote.proposal.to_string());
+        //     if !unique.contains_key(&tag) {
+        //         unique.insert(tag, vote.clone());
+        //     } else {
+        //         let mut tag_value = unique.entry(tag);
+        //         println!("{:?}", tag_value);
+        //         println!("{}", 222);
+        //         tag_value.amount = vec![coin(tag_value.amount[0].amount + vote.amount[0].amount, vote.amount[0].denom)];
+        //     }
+        // }
+    }
+
+    #[test]
+    fn test_calculate_distribution() {
+
+    }
+
+
 }

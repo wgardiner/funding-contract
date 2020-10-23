@@ -46,6 +46,17 @@ pub struct Vote {
     pub amount: Vec<Coin>, // can this just be referenced from the contract's trasaction history?
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct Distribution {
+    pub proposal: u32, // reference to proposal id
+    pub votes: Vec<Coin>,
+    pub distribution_ideal: Coin,
+    pub subsidy_ideal: Coin,
+    pub distribution_actual: Coin,
+    pub subsidy_actual: Coin,
+}
+
+
 pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, State> {
     singleton(storage, CONFIG_KEY)
 }
