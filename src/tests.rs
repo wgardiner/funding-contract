@@ -454,8 +454,29 @@ mod tests {
         ];
         let result = get_unique_votes_by_voter(&votes);
         assert_eq!(result.len(), 3);
-        assert_eq!(&*deps.api.human_address(&result[0].voter).unwrap(), "voter_0");
-        assert_eq!(result[0].amount[0].amount.u128(), 2);
+        let pretty_result: Vec<_> = result.iter()
+            .map(|x| (
+                x.proposal,
+                deps.api.human_address(&x.voter).unwrap(),
+                x.amount[0].amount.u128(),
+            ))
+            .collect();
+        let votes_by_voter_0: Vec<_> = pretty_result.iter()
+            .filter(|x| &*x.1 == "voter_0")
+            .collect();
+        assert_eq!(votes_by_voter_0.len(), 2);
+        let votes_by_voter_1: Vec<_> = pretty_result.iter()
+            .filter(|x| &*x.1 == "voter_1")
+            .collect();
+        assert_eq!(votes_by_voter_1.len(), 1);
+        assert_eq!(votes_by_voter_1[0].2, 1);
+
+        let votes_for_prop_0_by_voter_0: Vec<_> = pretty_result.iter()
+            .filter(|x| &*x.1 == "voter_0" && x.0 == 0)
+            .collect();
+        assert_eq!(votes_for_prop_0_by_voter_0.len(), 1);
+        assert_eq!(votes_for_prop_0_by_voter_0[0].2, 2);
+        // println!("{:#?}", pretty_result);
     }
 
     #[test]
