@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use crate::contract::{handle, init, query, get_unique_votes_by_voter};
     use crate::error::ContractError;
-    use crate::msg::{HandleMsg, InitMsg, ProposalListResponse, QueryMsg, StateResponse};
+    use crate::msg::{
+        CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
+        QueryMsg, StateResponse,
+    };
     use crate::state::{config_read, Vote};
-    // use cosmwasm_std::{CanonicalAddr};
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
@@ -158,7 +159,10 @@ mod tests {
 
         // try to create a proposal as "any_user"
         let info = mock_info("any_user", &coins(1000, "earth"));
-        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let data = res.data.unwrap();
+        let value: CreateProposalResponse = from_binary(&data).unwrap();
+        assert_eq!(0, value.proposal_id);
 
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
@@ -174,6 +178,18 @@ mod tests {
             .canonical_address(&HumanAddr::from("proposal_recipient"))
             .unwrap();
         assert_eq!(recipient, value.proposals[0].recipient);
+
+        // test Proposal State query response.
+        let res = query(
+            &mut deps,
+            mock_env(),
+            QueryMsg::ProposalState { proposal_id: 0 },
+        )
+        .unwrap();
+        let value: ProposalStateResponse = from_binary(&res).unwrap();
+        assert_eq!("My proposal", value.proposal.name);
+        assert_eq!(recipient, value.proposal.recipient);
+        assert_eq!(0, value.votes.len());
     }
 
     #[test]
@@ -190,7 +206,10 @@ mod tests {
         };
 
         let info = mock_info("proposer_0", &coins(1000, "earth"));
-        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let data = res.data.unwrap();
+        let value: CreateProposalResponse = from_binary(&data).unwrap();
+        assert_eq!(0, value.proposal_id);
 
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
@@ -206,6 +225,18 @@ mod tests {
             .canonical_address(&HumanAddr::from("proposal_recipient"))
             .unwrap();
         assert_eq!(recipient, value.proposals[0].recipient);
+
+        // test Proposal State query response.
+        let res = query(
+            &mut deps,
+            mock_env(),
+            QueryMsg::ProposalState { proposal_id: 0 },
+        )
+        .unwrap();
+        let value: ProposalStateResponse = from_binary(&res).unwrap();
+        assert_eq!("My proposal", value.proposal.name);
+        assert_eq!(recipient, value.proposal.recipient);
+        assert_eq!(0, value.votes.len());
     }
 
     #[test]
@@ -245,7 +276,7 @@ mod tests {
 
         // create vote.
         // use an invalid proposal id.
-        let vote_msg = HandleMsg::CreateVote { proposal_id: 3 };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 2 };
         let info = mock_info("voter_0", &coins(1000, "earth"));
 
         // set the time to the voting period.
@@ -302,7 +333,7 @@ mod tests {
         mock_proposal(&mut deps, default_proposal_msg());
 
         // create vote.
-        let vote_msg = HandleMsg::CreateVote { proposal_id: 1 };
+        let vote_msg = HandleMsg::CreateVote { proposal_id: 0 };
 
         // try to create a vote as "any user"
         let info = mock_info("any_user", &coins(1000, "earth"));
@@ -327,6 +358,19 @@ mod tests {
 
         // check amount.
         assert_eq!(coins(1000, "earth"), state.votes[0].amount);
+
+        // test Proposal State query response.
+        let res = query(
+            &mut deps,
+            mock_env(),
+            QueryMsg::ProposalState { proposal_id: 0 },
+        )
+        .unwrap();
+        let value: ProposalStateResponse = from_binary(&res).unwrap();
+        assert_eq!("My proposal", value.proposal.name);
+        assert_eq!(1, value.votes.len());
+        assert_eq!(voter, value.votes[0].voter);
+        assert_eq!(coins(1000, "earth"), value.votes[0].amount);
     }
 
     #[test]
@@ -361,6 +405,19 @@ mod tests {
 
         // check amount.
         assert_eq!(coins(1000, "earth"), state.votes[0].amount);
+
+        // test Proposal State query response.
+        let res = query(
+            &mut deps,
+            mock_env(),
+            QueryMsg::ProposalState { proposal_id: 2 },
+        )
+        .unwrap();
+        let value: ProposalStateResponse = from_binary(&res).unwrap();
+        assert_eq!("My proposal", value.proposal.name);
+        assert_eq!(1, value.votes.len());
+        assert_eq!(voter, value.votes[0].voter);
+        assert_eq!(coins(1000, "earth"), value.votes[0].amount);
     }
 
     #[test]
@@ -396,22 +453,9 @@ mod tests {
             },
         ];
         let result = get_unique_votes_by_voter(&votes);
-        // println!("{:#?}", deps.api.human_address(&result[0].voter));
-        // println!("{:?}", &*result[0].voter);
         assert_eq!(result.len(), 3);
-
-        // let mut unique: HashMap<String, Vote> = HashMap::new();
-        // for vote in votes {
-        //     let tag = format!("{}--{}", vote.voter, vote.proposal.to_string());
-        //     if !unique.contains_key(&tag) {
-        //         unique.insert(tag, vote.clone());
-        //     } else {
-        //         let mut tag_value = unique.entry(tag);
-        //         println!("{:?}", tag_value);
-        //         println!("{}", 222);
-        //         tag_value.amount = vec![coin(tag_value.amount[0].amount + vote.amount[0].amount, vote.amount[0].denom)];
-        //     }
-        // }
+        assert_eq!(&*deps.api.human_address(&result[0].voter).unwrap(), "voter_0");
+        assert_eq!(result[0].amount[0].amount.u128(), 2);
     }
 
     #[test]

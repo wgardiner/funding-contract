@@ -4,20 +4,15 @@ use std::collections::HashMap;
 
 use cosmwasm_std::{
     to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
-    MessageInfo, Querier, StdResult, Storage, coin, Uint128
+    MessageInfo, Querier, StdError, StdResult, Storage, coin,
 };
 
 use crate::error::ContractError;
-use crate::msg::{HandleMsg, InitMsg, ProposalListResponse, QueryMsg, StateResponse};
+use crate::msg::{
+    CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
+    QueryMsg, StateResponse,
+};
 use crate::state::{config, config_read, Proposal, State, Vote, Distribution};
-
-// pub fn mapHumanToCanonicalAddr(list: Vec<_>) -> Vec<CanonicalAddr> {
-//     list
-//         .iter()
-//         .map(|x| deps.api.canonical_address(x))
-//         .filter_map(Result::ok)
-//         .collect()
-// }
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
@@ -117,11 +112,12 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
             period_type: "proposal".to_string(),
         });
     }
+    let proposal_id = state.proposals.len() as u32;
     if sender_is_valid && period_is_valid {
         config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
             // state.count += 1;
             state.proposals.push(Proposal {
-                id: state.proposals.len() as u32,
+                id: proposal_id,
                 name,
                 description,
                 tags,
@@ -131,7 +127,12 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
         })?;
     }
 
-    Ok(HandleResponse::default())
+    let res = HandleResponse {
+        messages: vec![],
+        attributes: vec![],
+        data: Some(to_binary(&CreateProposalResponse { proposal_id })?),
+    };
+    Ok(res)
 }
 
 pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {
@@ -176,7 +177,7 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
             period_type: "voting".to_string(),
         });
     }
-    let proposal_is_valid = state.proposals.len() as u32 >= proposal_id;
+    let proposal_is_valid = state.proposals.len() as u32 > proposal_id;
     if !proposal_is_valid {
         return Err(ContractError::InvalidProposal { id: proposal_id });
     }
@@ -196,51 +197,14 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
 }
 
 pub fn get_unique_votes_by_voter(votes: &Vec<Vote>) -> Vec<Vote> {
-
-    // let unique: Vec<_> = votes.into_iter()
-    //     .map(|v| (v.proposal, v.amount[0].amount))
-    //     .collect();
-    // let mut unique: HashMap<_, _> = HashMap::new();
-    // for
-
-    // let hmap = votes.into_iter()
-    //     .fold(
-    //         HashMap::new(),
-    //         |mut acc, x| {
-    //             // *acc.entry(
-    //             //     format!("{}--{}", x.voter, x.proposal.to_string())
-    //             // ).or_insert(Uint128(0)) += x.amount[0].amount;
-    //             // let (mut n, p, vaddr) = *acc.entry(
-    //             let mut entry = *acc.entry(
-    //                 format!("{}--{}", x.voter, x.proposal.to_string())
-    //             // ).or_insert((Uint128(0), x.proposal, &x.voter));
-    //             ).or_insert(Vote {
-    //                 voter: x.voter,
-    //                 proposal: x.proposal,
-    //                 amount: x.amount,
-    //             });
-
-    //             // n += x.amount[0].amount;
-
-    //             acc
-    //         }
-    //     );
-    // let sum = votes.into_iter().fold(Uint128(0), |acc, x|  x.amount[0].amount + acc);
-
-    // let mut unique: HashMap = HashMap::new();
-
     let mut unique: HashMap<String, Vote> = HashMap::new();
     for vote in votes {
         let tag = format!("{}--{}", vote.voter, vote.proposal.to_string());
-        // println!("{}", tag);
 
         if !unique.contains_key(&tag) {
             unique.insert(tag, vote.clone());
         } else {
-            // let tag_entry = unique.entry(tag);
             let value = unique.get(&tag).unwrap();
-            // println!("{:?}", value);
-            // println!("{}", 0);
             let new_entry = Vote{
                 voter: vote.voter.clone(),
                 proposal: vote.proposal,
@@ -250,18 +214,9 @@ pub fn get_unique_votes_by_voter(votes: &Vec<Vote>) -> Vec<Vote> {
                 )],
             };
             unique.insert(tag, new_entry);
-            // tag_entry.value.amount = vec![coin(tag_entry.amount[0].amount + vote.amount[0].amount, vote.amount[0].denom)];
-            // tag_entry = Vote {}
         }
     }
-
-    println!("{:?}", unique);
-    // println!("{}", sum);
-
-    // votes.clone()
     unique.values().cloned().collect()
-
-
 }
 
 pub fn calculate_distribution(_votes: Vec<Vote>, _proposals: Vec<Proposal>) -> Vec<Distribution> {
@@ -286,6 +241,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     match msg {
         QueryMsg::GetState {} => to_binary(&query_state(deps)?),
         QueryMsg::ProposalList {} => to_binary(&query_proposal_list(deps)?),
+        QueryMsg::ProposalState { proposal_id } => query_proposal_state(deps, proposal_id),
     }
 }
 
@@ -320,4 +276,24 @@ fn query_proposal_list<S: Storage, A: Api, Q: Querier>(
     let state = config_read(&deps.storage).load()?;
     let proposals = state.proposals;
     Ok(ProposalListResponse { proposals })
+}
+
+fn query_proposal_state<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    proposal_id: u32,
+) -> StdResult<Binary> {
+    let state = config_read(&deps.storage).load()?;
+    let proposal = match state.proposals.into_iter().find(|p| p.id == proposal_id) {
+        Some(proposal) => Some(proposal),
+        None => return Err(StdError::generic_err("Proposal does not exist")),
+    }
+    .unwrap();
+
+    let votes: Vec<Vote> = state
+        .votes
+        .into_iter()
+        .filter(|v| v.proposal == proposal_id)
+        .collect();
+    let resp = ProposalStateResponse { proposal, votes };
+    to_binary(&resp)
 }
