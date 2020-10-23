@@ -225,16 +225,18 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
     Ok(res)
 }
 
-pub fn get_unique_votes_by_voter(votes: &Vec<Vote>) -> Vec<Vote> {
+pub fn get_unique_votes_by_voter(votes: &[Vote]) -> Vec<Vote> {
     let mut unique: HashMap<String, Vote> = HashMap::new();
     for vote in votes {
         let tag = format!("{}--{}", vote.voter, vote.proposal.to_string());
 
-        if !unique.contains_key(&tag) {
-            unique.insert(tag, vote.clone());
-        } else {
+        // by default add the vote itself.
+        let mut new_entry = vote.clone();
+
+        // if the tag exists, update the existing vote amount.
+        if unique.contains_key(&tag) {
             let value = unique.get(&tag).unwrap();
-            let new_entry = Vote{
+            new_entry = Vote{
                 voter: vote.voter.clone(),
                 proposal: vote.proposal,
                 amount: vec![coin(
@@ -242,8 +244,10 @@ pub fn get_unique_votes_by_voter(votes: &Vec<Vote>) -> Vec<Vote> {
                     &vote.amount[0].denom
                 )],
             };
-            unique.insert(tag, new_entry);
         }
+
+        // add new key, or update existing.
+        unique.insert(tag, new_entry);
     }
     unique.values().cloned().collect()
 }
