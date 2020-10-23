@@ -1,4 +1,4 @@
-use crate::state::{Proposal, Vote};
+use crate::state::{Distribution, Proposal, Vote};
 use cosmwasm_std::HumanAddr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -34,6 +34,7 @@ pub enum HandleMsg {
     CreateVote {
         proposal_id: u32,
     },
+    CheckDistributions {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -47,6 +48,11 @@ pub struct CreateProposal {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CreateProposalResponse {
     pub proposal_id: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CheckDistributionsResponse {
+    pub distributions: Vec<Distribution>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

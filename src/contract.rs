@@ -9,7 +9,7 @@ use cosmwasm_std::{
 
 use crate::error::ContractError;
 use crate::msg::{
-    CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
+    CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
     QueryMsg, StateResponse,
 };
 use crate::state::{config, config_read, Proposal, State, Vote, Distribution};
@@ -78,7 +78,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         } => try_create_proposal(deps, env, info, state, recipient, name, description, tags),
         HandleMsg::CreateVote { proposal_id } => {
             try_create_vote(deps, env, info, state, proposal_id)
-        }
+        },
+        HandleMsg::CheckDistributions {} => try_check_distributions(deps, env, info, state),
     }
 }
 
@@ -196,6 +197,34 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     Ok(HandleResponse::default())
 }
 
+pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
+    _deps: &mut Extern<S, A, Q>,
+    env: Env,
+    _info: MessageInfo,
+    state: State,
+) -> Result<HandleResponse, ContractError> {
+    // Distributions can only be checked after proposal period.
+    let period_is_valid = validate_period(
+        env.block.time,
+        state.voting_period_start.unwrap(),
+        state.voting_period_end.unwrap(),
+    );
+    if !period_is_valid {
+        return Err(ContractError::InvalidPeriod {
+            period_type: "voting".to_string(),
+        });
+    }
+
+    let distributions: Vec<Distribution> = calculate_distributions(state.votes, state.proposals);
+
+    let res = HandleResponse {
+        messages: vec![],
+        attributes: vec![],
+        data: Some(to_binary(&CheckDistributionsResponse { distributions })?),
+    };
+    Ok(res)
+}
+
 pub fn get_unique_votes_by_voter(votes: &Vec<Vote>) -> Vec<Vote> {
     let mut unique: HashMap<String, Vote> = HashMap::new();
     for vote in votes {
@@ -219,17 +248,19 @@ pub fn get_unique_votes_by_voter(votes: &Vec<Vote>) -> Vec<Vote> {
     unique.values().cloned().collect()
 }
 
-pub fn calculate_distribution(_votes: Vec<Vote>, _proposals: Vec<Proposal>) -> Vec<Distribution> {
-    vec![
+pub fn calculate_distributions(_votes: Vec<Vote>, proposals: Vec<Proposal>) -> Vec<Distribution> {
+    // TODO: Calculate actual distributions.
+    // This creates a temp distribution for each proposal.
+    proposals.iter().map(|p| {
         Distribution {
-            proposal: 0,
+            proposal: p.id,
             votes: vec![coin(1, "shell")],
             distribution_ideal: coin(1, "shell"),
             subsidy_ideal: coin(1, "shell"),
             distribution_actual: coin(1, "shell"),
             subsidy_actual: coin(1, "shell"),
         }
-    ]
+    }).collect()
 }
 
 // TODO: Add query Proposal + Votes by Proposal ID.

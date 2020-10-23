@@ -3,7 +3,7 @@ mod tests {
     use crate::contract::{handle, init, query, get_unique_votes_by_voter};
     use crate::error::ContractError;
     use crate::msg::{
-        CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
+        CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
         QueryMsg, StateResponse,
     };
     use crate::state::{config_read, Vote};
@@ -484,5 +484,51 @@ mod tests {
 
     }
 
+    #[test]
+    fn fail_check_distributions_proposal_period() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
 
+        // anyone can check the distributions.
+        let info = mock_info("any_user", &coins(1000, "earth"));
+
+        // set the time to the proposal period.
+        // cannot check distributions during proposal period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 1;
+
+        // send message.
+        let msg = HandleMsg::CheckDistributions { };
+        let res = handle(&mut deps, env, info, msg);
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+    }
+
+    #[test]
+    fn check_distributions() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+
+        // anyone can check the distributions.
+        let info = mock_info("any_user", &coins(1000, "earth"));
+
+        // set the time to the voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 3;
+
+        // send message.
+        let msg = HandleMsg::CheckDistributions { };
+        let res = handle(&mut deps, env, info, msg).unwrap();
+        let data = res.data.unwrap();
+        let value: CheckDistributionsResponse = from_binary(&data).unwrap();
+
+        // assert there is a ProposalDistribution for every proposal.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.proposals.len(), value.distributions.len());
+    }
 }
