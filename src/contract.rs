@@ -3,16 +3,16 @@
 use std::collections::HashMap;
 
 use cosmwasm_std::{
-    to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr, InitResponse,
-    MessageInfo, Querier, StdError, StdResult, Storage, coin,
+    coin, to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr,
+    InitResponse, MessageInfo, Querier, StdError, StdResult, Storage,
 };
 
 use crate::error::ContractError;
 use crate::msg::{
-    CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
-    QueryMsg, StateResponse,
+    CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse,
+    ProposalStateResponse, QueryMsg, StateResponse,
 };
-use crate::state::{config, config_read, Proposal, State, Vote, Distribution};
+use crate::state::{config, config_read, Distribution, Proposal, State, Vote};
 
 // Note, you can use StdResult in some functions where you do not
 // make use of the custom errors
@@ -78,7 +78,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         } => try_create_proposal(deps, env, info, state, recipient, name, description, tags),
         HandleMsg::CreateVote { proposal_id } => {
             try_create_vote(deps, env, info, state, proposal_id)
-        },
+        }
         HandleMsg::CheckDistributions {} => try_check_distributions(deps, env, info, state),
     }
 }
@@ -236,12 +236,12 @@ pub fn get_unique_votes_by_voter(votes: &[Vote]) -> Vec<Vote> {
         // if the tag exists, update the existing vote amount.
         if unique.contains_key(&tag) {
             let value = unique.get(&tag).unwrap();
-            new_entry = Vote{
+            new_entry = Vote {
                 voter: vote.voter.clone(),
                 proposal: vote.proposal,
                 amount: vec![coin(
                     vote.amount[0].amount.u128() + value.amount[0].amount.u128(),
-                    &vote.amount[0].denom
+                    &vote.amount[0].denom,
                 )],
             };
         }
@@ -255,16 +255,17 @@ pub fn get_unique_votes_by_voter(votes: &[Vote]) -> Vec<Vote> {
 pub fn calculate_distributions(_votes: Vec<Vote>, proposals: Vec<Proposal>) -> Vec<Distribution> {
     // TODO: Calculate actual distributions.
     // This creates a temp distribution for each proposal.
-    proposals.iter().map(|p| {
-        Distribution {
+    proposals
+        .iter()
+        .map(|p| Distribution {
             proposal: p.id,
             votes: vec![coin(1, "shell")],
             distribution_ideal: coin(1, "shell"),
             subsidy_ideal: coin(1, "shell"),
             distribution_actual: coin(1, "shell"),
             subsidy_actual: coin(1, "shell"),
-        }
-    }).collect()
+        })
+        .collect()
 }
 
 // TODO: Add query Proposal + Votes by Proposal ID.

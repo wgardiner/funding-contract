@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use crate::contract::{handle, init, query, get_unique_votes_by_voter};
+    use crate::contract::{get_unique_votes_by_voter, handle, init, query};
     use crate::error::ContractError;
     use crate::msg::{
-        CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
-        QueryMsg, StateResponse,
+        CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg,
+        ProposalListResponse, ProposalStateResponse, QueryMsg, StateResponse,
     };
     use crate::state::{config_read, Vote};
     use cosmwasm_std::testing::{
@@ -425,27 +425,32 @@ mod tests {
         let deps = mock_dependencies(&[]);
         let votes: Vec<Vote> = vec![
             Vote {
-                voter: deps.api
+                voter: deps
+                    .api
                     .canonical_address(&HumanAddr("voter_0".to_string()))
                     .unwrap(),
                 proposal: 0,
                 amount: coins(1, "earth"),
             },
             Vote {
-                voter: deps.api
+                voter: deps
+                    .api
                     .canonical_address(&HumanAddr("voter_1".to_string()))
                     .unwrap(),
                 proposal: 0,
                 amount: coins(1, "earth"),
             },
             Vote {
-                voter: deps.api
+                voter: deps
+                    .api
                     .canonical_address(&HumanAddr("voter_0".to_string()))
                     .unwrap(),
                 proposal: 1,
                 amount: coins(1, "earth"),
-            },Vote {
-                voter: deps.api
+            },
+            Vote {
+                voter: deps
+                    .api
                     .canonical_address(&HumanAddr("voter_0".to_string()))
                     .unwrap(),
                 proposal: 0,
@@ -454,24 +459,30 @@ mod tests {
         ];
         let result = get_unique_votes_by_voter(&votes);
         assert_eq!(result.len(), 3);
-        let pretty_result: Vec<_> = result.iter()
-            .map(|x| (
-                x.proposal,
-                deps.api.human_address(&x.voter).unwrap(),
-                x.amount[0].amount.u128(),
-            ))
+        let pretty_result: Vec<_> = result
+            .iter()
+            .map(|x| {
+                (
+                    x.proposal,
+                    deps.api.human_address(&x.voter).unwrap(),
+                    x.amount[0].amount.u128(),
+                )
+            })
             .collect();
-        let votes_by_voter_0: Vec<_> = pretty_result.iter()
+        let votes_by_voter_0: Vec<_> = pretty_result
+            .iter()
             .filter(|x| &*x.1 == "voter_0")
             .collect();
         assert_eq!(votes_by_voter_0.len(), 2);
-        let votes_by_voter_1: Vec<_> = pretty_result.iter()
+        let votes_by_voter_1: Vec<_> = pretty_result
+            .iter()
             .filter(|x| &*x.1 == "voter_1")
             .collect();
         assert_eq!(votes_by_voter_1.len(), 1);
         assert_eq!(votes_by_voter_1[0].2, 1);
 
-        let votes_for_prop_0_by_voter_0: Vec<_> = pretty_result.iter()
+        let votes_for_prop_0_by_voter_0: Vec<_> = pretty_result
+            .iter()
             .filter(|x| &*x.1 == "voter_0" && x.0 == 0)
             .collect();
         assert_eq!(votes_for_prop_0_by_voter_0.len(), 1);
@@ -480,9 +491,7 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_distribution() {
-
-    }
+    fn test_calculate_distribution() {}
 
     #[test]
     fn fail_check_distributions_proposal_period() {
@@ -498,7 +507,7 @@ mod tests {
         env.block.time = env.block.time + 86400 * 1;
 
         // send message.
-        let msg = HandleMsg::CheckDistributions { };
+        let msg = HandleMsg::CheckDistributions {};
         let res = handle(&mut deps, env, info, msg);
         match res {
             Err(ContractError::InvalidPeriod { period_type: _ }) => {}
@@ -522,7 +531,7 @@ mod tests {
         env.block.time = env.block.time + 86400 * 3;
 
         // send message.
-        let msg = HandleMsg::CheckDistributions { };
+        let msg = HandleMsg::CheckDistributions {};
         let res = handle(&mut deps, env, info, msg).unwrap();
         let data = res.data.unwrap();
         let value: CheckDistributionsResponse = from_binary(&data).unwrap();

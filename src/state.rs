@@ -56,7 +56,6 @@ pub struct Distribution {
     pub subsidy_actual: Coin,
 }
 
-
 pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, State> {
     singleton(storage, CONFIG_KEY)
 }
