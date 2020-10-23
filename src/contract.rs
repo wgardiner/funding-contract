@@ -231,20 +231,20 @@ pub fn get_unique_votes_by_voter(votes: &[Vote]) -> Vec<Vote> {
         let tag = format!("{}--{}", vote.voter, vote.proposal.to_string());
 
         // by default add the vote itself.
-        let mut new_entry = vote.clone();
-
-        // if the tag exists, update the existing vote amount.
-        if unique.contains_key(&tag) {
+        let new_entry = if !unique.contains_key(&tag) {
+            vote.clone()
+        } else {
+            // if the tag exists, update the existing vote amount.
             let value = unique.get(&tag).unwrap();
-            new_entry = Vote {
+            Vote {
                 voter: vote.voter.clone(),
                 proposal: vote.proposal,
                 amount: vec![coin(
                     vote.amount[0].amount.u128() + value.amount[0].amount.u128(),
                     &vote.amount[0].denom,
                 )],
-            };
-        }
+            }
+        };
 
         // add new key, or update existing.
         unique.insert(tag, new_entry);
