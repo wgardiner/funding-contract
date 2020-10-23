@@ -35,6 +35,7 @@ pub enum HandleMsg {
         proposal_id: u32,
     },
     CheckDistributions {},
+    DistributeFunds {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

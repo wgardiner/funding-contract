@@ -34,7 +34,7 @@ mod tests {
     }
 
     fn mock_init(mut deps: &mut Extern<MockStorage, MockApi, MockQuerier>, msg: InitMsg) {
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("owner", &coins(1000, "earth"));
         let _res = init(&mut deps, mock_env(), info, msg).unwrap();
     }
 
@@ -72,7 +72,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
 
         let msg = default_init_msg();
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("owner", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
         let res = init(&mut deps, mock_env(), info, msg).unwrap();
@@ -539,5 +539,77 @@ mod tests {
         // assert there is a ProposalDistribution for every proposal.
         let state = config_read(&deps.storage).load().unwrap();
         assert_eq!(state.proposals.len(), value.distributions.len());
+    }
+
+    #[test]
+    fn fail_distribute_funds_unauthorized() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
+
+        // try to distribute funds as any user.
+        let info = mock_info("any_user", &coins(1000, "earth"));
+
+        // set the time to the voting period.
+        // cannot check distributions during voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 6;
+
+        // send message.
+        let msg = HandleMsg::DistributeFunds {};
+        let res = handle(&mut deps, env, info, msg);
+        match res {
+            Err(ContractError::Unauthorized { list_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+    }
+
+    #[test]
+    fn fail_distribute_funds_invalid_period() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
+
+        // owner can distribute funds.
+        let info = mock_info("owner", &coins(1000, "earth"));
+
+        // set the time to the voting period.
+        // cannot check distributions during voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 3;
+
+        // send message.
+        let msg = HandleMsg::DistributeFunds {};
+        let res = handle(&mut deps, env, info, msg);
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+    }
+
+    #[test]
+    fn distribute_funds() {
+        let mut deps = mock_dependencies(&[]);
+        mock_init(&mut deps, default_init_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+
+        // owner can distribute funds.
+        let info = mock_info("owner", &coins(1000, "earth"));
+
+        // set the time to after the voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 6;
+
+        // send message.
+        let msg = HandleMsg::DistributeFunds {};
+        let res = handle(&mut deps, env, info, msg).unwrap();
+        let data = res.data.unwrap();
+        let value: CheckDistributionsResponse = from_binary(&data).unwrap();
+
+        // assert there is a ProposalDistribution for every proposal.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.proposals.len(), value.distributions.len());
+
+        // TODO: Assert that proposal recipients got funds.
     }
 }

@@ -80,6 +80,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             try_create_vote(deps, env, info, state, proposal_id)
         }
         HandleMsg::CheckDistributions {} => try_check_distributions(deps, env, info, state),
+        HandleMsg::DistributeFunds {} => try_distribute_funds(deps, env, info, state),
     }
 }
 
@@ -217,6 +218,43 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
 
     let distributions: Vec<Distribution> = calculate_distributions(state.votes, state.proposals);
 
+    let res = HandleResponse {
+        messages: vec![],
+        attributes: vec![],
+        data: Some(to_binary(&CheckDistributionsResponse { distributions })?),
+    };
+    Ok(res)
+}
+
+pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    info: MessageInfo,
+    state: State,
+) -> Result<HandleResponse, ContractError> {
+    // Only the contract owner can distribute funds.
+    let sender_is_valid =
+        validate_sender(deps.api.canonical_address(&info.sender)?, vec![state.owner]);
+    if !sender_is_valid {
+        return Err(ContractError::Unauthorized {
+            list_type: "owner".to_string(),
+        });
+    }
+    // Distributions can only be checked after proposal period.
+    let period_is_valid =
+        validate_period(env.block.time, state.voting_period_end.unwrap(), u64::MAX);
+    if !period_is_valid {
+        return Err(ContractError::InvalidPeriod {
+            period_type: "voting".to_string(),
+        });
+    }
+
+    let distributions: Vec<Distribution> = calculate_distributions(state.votes, state.proposals);
+
+    // TODO: Send funds to proposal recipients.
+
+    // TODO: Finalize response data.
+    // Should this return the same Vec<Distribution> data as CheckDistributions?
     let res = HandleResponse {
         messages: vec![],
         attributes: vec![],
