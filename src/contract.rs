@@ -7,7 +7,8 @@ use cosmwasm_std::{
 
 use crate::error::ContractError;
 use crate::msg::{
-    HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse, QueryMsg, StateResponse,
+    CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
+    QueryMsg, StateResponse,
 };
 use crate::state::{config, config_read, Proposal, State, Vote};
 
@@ -117,11 +118,12 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
             period_type: "proposal".to_string(),
         });
     }
+    let proposal_id = state.proposals.len() as u32;
     if sender_is_valid && period_is_valid {
         config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
             // state.count += 1;
             state.proposals.push(Proposal {
-                id: state.proposals.len() as u32,
+                id: proposal_id,
                 name,
                 description,
                 tags,
@@ -131,7 +133,12 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
         })?;
     }
 
-    Ok(HandleResponse::default())
+    let res = HandleResponse {
+        messages: vec![],
+        attributes: vec![],
+        data: Some(to_binary(&CreateProposalResponse { proposal_id })?),
+    };
+    Ok(res)
 }
 
 pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {

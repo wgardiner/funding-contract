@@ -3,7 +3,8 @@ mod tests {
     use crate::contract::{handle, init, query};
     use crate::error::ContractError;
     use crate::msg::{
-        HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse, QueryMsg, StateResponse,
+        CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse, ProposalStateResponse,
+        QueryMsg, StateResponse,
     };
     use crate::state::config_read;
     use cosmwasm_std::testing::{
@@ -158,7 +159,10 @@ mod tests {
 
         // try to create a proposal as "any_user"
         let info = mock_info("any_user", &coins(1000, "earth"));
-        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let data = res.data.unwrap();
+        let value: CreateProposalResponse = from_binary(&data).unwrap();
+        assert_eq!(0, value.proposal_id);
 
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
@@ -202,7 +206,10 @@ mod tests {
         };
 
         let info = mock_info("proposer_0", &coins(1000, "earth"));
-        let _res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let res = handle(&mut deps, mock_env(), info, proposal_msg).unwrap();
+        let data = res.data.unwrap();
+        let value: CreateProposalResponse = from_binary(&data).unwrap();
+        assert_eq!(0, value.proposal_id);
 
         // proposal should be created.
         let state = config_read(&deps.storage).load().unwrap();
