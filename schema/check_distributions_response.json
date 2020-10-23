@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CheckDistributionsResponse",
+  "type": "object",
+  "required": [
+    "distributions"
+  ],
+  "properties": {
+    "distributions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Distribution"
+      }
+    }
+  },
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "denom": {
+          "type": "string"
+        }
+      }
+    },
+    "Distribution": {
+      "type": "object",
+      "required": [
+        "distribution_actual",
+        "distribution_ideal",
+        "proposal",
+        "subsidy_actual",
+        "subsidy_ideal",
+        "votes"
+      ],
+      "properties": {
+        "distribution_actual": {
+          "$ref": "#/definitions/Coin"
+        },
+        "distribution_ideal": {
+          "$ref": "#/definitions/Coin"
+        },
+        "proposal": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "subsidy_actual": {
+          "$ref": "#/definitions/Coin"
+        },
+        "subsidy_ideal": {
+          "$ref": "#/definitions/Coin"
+        },
+        "votes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
+        }
+      }
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}

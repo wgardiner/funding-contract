@@ -5,10 +5,62 @@
     {
       "type": "object",
       "required": [
-        "increment"
+        "create_proposal"
       ],
       "properties": {
-        "increment": {
+        "create_proposal": {
+          "type": "object",
+          "required": [
+            "description",
+            "name",
+            "recipient",
+            "tags"
+          ],
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "recipient": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "tags": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "create_vote"
+      ],
+      "properties": {
+        "create_vote": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "check_distributions"
+      ],
+      "properties": {
+        "check_distributions": {
           "type": "object"
         }
       }
@@ -16,22 +68,18 @@
     {
       "type": "object",
       "required": [
-        "reset"
+        "distribute_funds"
       ],
       "properties": {
-        "reset": {
-          "type": "object",
-          "required": [
-            "count"
-          ],
-          "properties": {
-            "count": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
+        "distribute_funds": {
+          "type": "object"
         }
       }
     }
-  ]
+  ],
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
+    }
+  }
 }

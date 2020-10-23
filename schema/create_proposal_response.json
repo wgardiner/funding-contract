@@ -1,14 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CountResponse",
+  "title": "CreateProposalResponse",
   "type": "object",
   "required": [
-    "count"
+    "proposal_id"
   ],
   "properties": {
-    "count": {
+    "proposal_id": {
       "type": "integer",
-      "format": "int32"
+      "format": "uint32",
+      "minimum": 0.0
     }
   }
 }

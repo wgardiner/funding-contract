@@ -1,77 +1,20 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "State",
+  "title": "ProposalStateResponse",
   "type": "object",
   "required": [
-    "name",
-    "owner",
-    "proposals",
-    "proposer_whitelist",
-    "voter_whitelist",
+    "proposal",
     "votes"
   ],
   "properties": {
-    "name": {
-      "type": "string"
-    },
-    "owner": {
-      "$ref": "#/definitions/CanonicalAddr"
-    },
-    "proposal_period_end": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "proposal_period_start": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "proposals": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Proposal"
-      }
-    },
-    "proposer_whitelist": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/CanonicalAddr"
-      }
-    },
-    "voter_whitelist": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/CanonicalAddr"
-      }
+    "proposal": {
+      "$ref": "#/definitions/Proposal"
     },
     "votes": {
       "type": "array",
       "items": {
         "$ref": "#/definitions/Vote"
       }
-    },
-    "voting_period_end": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "voting_period_start": {
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
     }
   },
   "definitions": {

@@ -5,11 +5,43 @@
     {
       "type": "object",
       "required": [
-        "get_count"
+        "get_state"
       ],
       "properties": {
-        "get_count": {
+        "get_state": {
           "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "proposal_list"
+      ],
+      "properties": {
+        "proposal_list": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "proposal_state"
+      ],
+      "properties": {
+        "proposal_state": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
         }
       }
     }
