@@ -1,7 +1,7 @@
 [package]
-name = "project-name"
+name = "funding-contract"
 version = "0.1.0"
-authors = ["Will Gardiner <gardiner.w@gmail.com>"]
+authors = ["Will Gardiner <gardiner.w@gmail.com>", "Paul Weidner <paul@rootedsolutions.io>"]
 edition = "2018"
 
 exclude = [
