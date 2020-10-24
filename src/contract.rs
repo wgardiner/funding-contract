@@ -303,11 +303,8 @@ pub fn calculate_distributions(
     proposals: Vec<Proposal>,
     budget_contstraint: Vec<Coin>,
 ) -> Vec<Distribution> {
-
-
     let budget_value = budget_contstraint[0].amount.u128() as f64;
     // Multiply values so that we don't have to convert to floats
-    // let math_factor = 1_000_000u128;
 
     // Collapse multiple votes all votes by a single voter for a single proposal
     let unique_votes = get_unique_votes(&votes);
@@ -328,13 +325,11 @@ pub fn calculate_distributions(
             let proposal_votes: Vec<f64> = unique_votes
                 .iter()
                 .filter(|v| v.proposal == p.id)
-                // multiplying by 1e6 to allow for square roots
                 .map(|v| v.amount[0].amount.u128() as f64)
                 .collect();
 
             let distribution_ideal: f64 = proposal_votes.iter().map(|v| v.sqrt()).sum::<f64>().powi(2);
             let subsidy_ideal: f64 = distribution_ideal - proposal_votes.iter().sum::<f64>();
-            // (p.id, distribution_ideal, subsidy_ideal)
             DistIdeal {
                 proposal: p.id,
                 votes: proposal_votes,
@@ -344,7 +339,6 @@ pub fn calculate_distributions(
         })
         .collect();
 
-    // let constraint_factor: f64 = ideal_results.iter().map(|x| x.2).sum() / (budget_contstraint as f64);
     let constraint_factor: f64 = ideal_results.iter().map(|x| x.subsidy_ideal).sum::<f64>() / budget_value;
 
     ideal_results
@@ -363,20 +357,6 @@ pub fn calculate_distributions(
             }
         })
         .collect()
-
-    // // TODO: Calculate actual distributions.
-    // // This creates a temp distribution for each proposal.
-    // proposals
-    //     .iter()
-    //     .map(|p| Distribution {
-    //         proposal: p.id,
-    //         votes: vec![coin(1, "shell")],
-    //         distribution_ideal: coin(1, "shell"),
-    //         subsidy_ideal: coin(1, "shell"),
-    //         distribution_actual: coin(1, "shell"),
-    //         subsidy_actual: coin(1, "shell"),
-    //     })
-    //     .collect()
 }
 
 // TODO: Add query Proposal + Votes by Proposal ID.

@@ -6,7 +6,7 @@ mod tests {
         CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg,
         ProposalListResponse, ProposalStateResponse, QueryMsg, StateResponse,
     };
-    use crate::state::{config_read, Vote, Proposal};
+    use crate::state::{config_read, Vote, Proposal, Distribution};
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
@@ -666,7 +666,14 @@ mod tests {
                 tags: "stuffed animals, parrots".to_string(),
             },
         ];
-        let result = calculate_distributions(votes, proposals, coins(50, "shell"));
-        println!("{:#?}", result);
+        let result: Vec<Distribution> = calculate_distributions(votes, proposals, coins(50, "shell"));
+        // println!("{:#?}", result);
+        assert_eq!(result.len(), 2);
+        let distributions_for_prop_0: Vec<Distribution> = result.clone().into_iter().filter(|d| d.proposal == 0).collect();
+        let distributions_for_prop_1: Vec<Distribution> = result.clone().into_iter().filter(|d| d.proposal == 1).collect();
+        assert_eq!(distributions_for_prop_0[0].subsidy_actual.amount.u128(), 7 as u128);
+        assert_eq!(distributions_for_prop_1[0].subsidy_actual.amount.u128(), 42 as u128);
+        assert_eq!(distributions_for_prop_0[0].distribution_actual.amount.u128(), 12 as u128);
+        assert_eq!(distributions_for_prop_1[0].distribution_actual.amount.u128(), 67 as u128);
     }
 }
