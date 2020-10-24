@@ -12,12 +12,7 @@ const votes: Vote[] = [
   },
   {
     voter: 'voter_1',
-    amount: 1,
-    proposalId: 'proposal_0',
-  },
-  {
-    voter: 'voter_1',
-    amount: 3,
+    amount: 4,
     proposalId: 'proposal_0',
   },
   {

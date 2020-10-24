@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use crate::contract::{get_unique_votes_by_voter, handle, init, query};
+    use crate::contract::{get_unique_votes, calculate_distributions, handle, init, query};
     use crate::error::ContractError;
     use crate::msg::{
         CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg,
         ProposalListResponse, ProposalStateResponse, QueryMsg, StateResponse,
     };
-    use crate::state::{config_read, Vote};
+    use crate::state::{config_read, Vote, Proposal};
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
@@ -457,7 +457,7 @@ mod tests {
                 amount: coins(1, "earth"),
             },
         ];
-        let result = get_unique_votes_by_voter(&votes);
+        let result = get_unique_votes(&votes);
         assert_eq!(result.len(), 3);
         let pretty_result: Vec<_> = result
             .iter()
@@ -611,5 +611,62 @@ mod tests {
         assert_eq!(state.proposals.len(), value.distributions.len());
 
         // TODO: Assert that proposal recipients got funds.
+    }
+
+    #[test]
+    fn test_calculate_distributions() {
+        let deps = mock_dependencies(&[]);
+        let votes: Vec<Vote> = vec![
+            Vote {
+                voter: deps
+                    .api
+                    .canonical_address(&HumanAddr("voter_0".to_string()))
+                    .unwrap(),
+                proposal: 0,
+                amount: coins(1, "earth"),
+            },
+            Vote {
+                voter: deps
+                    .api
+                    .canonical_address(&HumanAddr("voter_1".to_string()))
+                    .unwrap(),
+                proposal: 0,
+                amount: coins(4, "earth"),
+            },
+            Vote {
+                voter: deps
+                    .api
+                    .canonical_address(&HumanAddr("voter_2".to_string()))
+                    .unwrap(),
+                proposal: 1,
+                amount: coins(9, "earth"),
+            },
+            Vote {
+                voter: deps
+                    .api
+                    .canonical_address(&HumanAddr("voter_0".to_string()))
+                    .unwrap(),
+                proposal: 1,
+                amount: coins(16, "earth"),
+            },
+        ];
+        let proposals = vec![
+            Proposal {
+                id: 0,
+                name: "Proposal 0".to_string(),
+                recipient: deps.api.canonical_address(&HumanAddr("recipient_0".to_string())).unwrap(),
+                description: "an okay proposal".to_string(),
+                tags: "money".to_string(),
+            },
+            Proposal {
+                id: 1,
+                name: "Proposal 1".to_string(),
+                recipient: deps.api.canonical_address(&HumanAddr("recipient_1".to_string())).unwrap(),
+                description: "an better proposal".to_string(),
+                tags: "stuffed animals, parrots".to_string(),
+            },
+        ];
+        let result = calculate_distributions(votes, proposals, coins(50, "shell"));
+        println!("{:#?}", result);
     }
 }

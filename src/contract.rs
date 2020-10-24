@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use cosmwasm_std::{
     coin, to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr,
-    InitResponse, MessageInfo, Querier, StdError, StdResult, Storage,
+    InitResponse, MessageInfo, Querier, StdError, StdResult, Storage, Coin,
 };
 
 use crate::error::ContractError;
@@ -199,7 +199,7 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
 }
 
 pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
-    _deps: &mut Extern<S, A, Q>,
+    deps: &mut Extern<S, A, Q>,
     env: Env,
     _info: MessageInfo,
     state: State,
@@ -216,7 +216,11 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
         });
     }
 
-    let distributions: Vec<Distribution> = calculate_distributions(state.votes, state.proposals);
+    let distributions: Vec<Distribution> = calculate_distributions(
+        state.votes,
+        state.proposals,
+        deps.querier.query_all_balances(&env.contract.address)?,
+    );
 
     let res = HandleResponse {
         messages: vec![],
@@ -249,7 +253,11 @@ pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
         });
     }
 
-    let distributions: Vec<Distribution> = calculate_distributions(state.votes, state.proposals);
+    let distributions: Vec<Distribution> = calculate_distributions(
+        state.votes,
+        state.proposals,
+        deps.querier.query_all_balances(&env.contract.address)?,
+    );
 
     // TODO: Send funds to proposal recipients.
 
@@ -263,7 +271,7 @@ pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
     Ok(res)
 }
 
-pub fn get_unique_votes_by_voter(votes: &[Vote]) -> Vec<Vote> {
+pub fn get_unique_votes(votes: &[Vote]) -> Vec<Vote> {
     let mut unique: HashMap<String, Vote> = HashMap::new();
     for vote in votes {
         let tag = format!("{}--{}", vote.voter, vote.proposal.to_string());
@@ -290,20 +298,85 @@ pub fn get_unique_votes_by_voter(votes: &[Vote]) -> Vec<Vote> {
     unique.values().cloned().collect()
 }
 
-pub fn calculate_distributions(_votes: Vec<Vote>, proposals: Vec<Proposal>) -> Vec<Distribution> {
-    // TODO: Calculate actual distributions.
-    // This creates a temp distribution for each proposal.
-    proposals
+pub fn calculate_distributions(
+    votes: Vec<Vote>,
+    proposals: Vec<Proposal>,
+    budget_contstraint: Vec<Coin>,
+) -> Vec<Distribution> {
+
+
+    let budget_value = budget_contstraint[0].amount.u128() as f64;
+    // Multiply values so that we don't have to convert to floats
+    // let math_factor = 1_000_000u128;
+
+    // Collapse multiple votes all votes by a single voter for a single proposal
+    let unique_votes = get_unique_votes(&votes);
+
+    // TODO: convert to same currency? normalize to shell or ushell
+
+    struct DistIdeal {
+        proposal: u32,
+        votes: Vec<f64>,
+        distribution_ideal: f64,
+        subsidy_ideal: f64
+    }
+
+    let ideal_results: Vec<_> = proposals
         .iter()
-        .map(|p| Distribution {
-            proposal: p.id,
-            votes: vec![coin(1, "shell")],
-            distribution_ideal: coin(1, "shell"),
-            subsidy_ideal: coin(1, "shell"),
-            distribution_actual: coin(1, "shell"),
-            subsidy_actual: coin(1, "shell"),
+        .map(|p| {
+            // Convert votes to a nicer format
+            let proposal_votes: Vec<f64> = unique_votes
+                .iter()
+                .filter(|v| v.proposal == p.id)
+                // multiplying by 1e6 to allow for square roots
+                .map(|v| v.amount[0].amount.u128() as f64)
+                .collect();
+
+            let distribution_ideal: f64 = proposal_votes.iter().map(|v| v.sqrt()).sum::<f64>().powi(2);
+            let subsidy_ideal: f64 = distribution_ideal - proposal_votes.iter().sum::<f64>();
+            // (p.id, distribution_ideal, subsidy_ideal)
+            DistIdeal {
+                proposal: p.id,
+                votes: proposal_votes,
+                distribution_ideal,
+                subsidy_ideal,
+            }
+        })
+        .collect();
+
+    // let constraint_factor: f64 = ideal_results.iter().map(|x| x.2).sum() / (budget_contstraint as f64);
+    let constraint_factor: f64 = ideal_results.iter().map(|x| x.subsidy_ideal).sum::<f64>() / budget_value;
+
+    ideal_results
+        .iter()
+        .map(|p| {
+            let total_votes: f64 = p.votes.iter().sum();
+            let distribution_actual: f64 = (p.distribution_ideal - total_votes) / constraint_factor + total_votes;
+            let subsidy_actual: f64 = distribution_actual - total_votes;
+            Distribution {
+                proposal: p.proposal,
+                votes: p.votes.iter().map(|v| coin(*v as u128, "shell")).collect(),
+                distribution_ideal: coin(p.distribution_ideal as u128, "shell"),
+                subsidy_ideal: coin(p.subsidy_ideal as u128, "shell"),
+                distribution_actual: coin(distribution_actual as u128, "shell"),
+                subsidy_actual: coin(subsidy_actual as u128, "shell"),
+            }
         })
         .collect()
+
+    // // TODO: Calculate actual distributions.
+    // // This creates a temp distribution for each proposal.
+    // proposals
+    //     .iter()
+    //     .map(|p| Distribution {
+    //         proposal: p.id,
+    //         votes: vec![coin(1, "shell")],
+    //         distribution_ideal: coin(1, "shell"),
+    //         subsidy_ideal: coin(1, "shell"),
+    //         distribution_actual: coin(1, "shell"),
+    //         subsidy_actual: coin(1, "shell"),
+    //     })
+    //     .collect()
 }
 
 // TODO: Add query Proposal + Votes by Proposal ID.
