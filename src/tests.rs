@@ -12,6 +12,7 @@ mod tests {
     };
     use cosmwasm_std::{coins, from_binary, Api, Extern, HumanAddr, MessageInfo, Coin};
 
+    // From v0.11
     /// Just set sender and sent funds for the message. The essential for
     /// This is intended for use in test code only.
     pub fn mock_info<U: Into<HumanAddr>>(sender: U, sent: &[Coin]) -> MessageInfo {
