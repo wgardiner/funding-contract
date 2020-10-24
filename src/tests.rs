@@ -8,9 +8,59 @@ mod tests {
     };
     use crate::state::{config_read, Vote, Proposal, Distribution};
     use cosmwasm_std::testing::{
-        mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+        mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{coins, from_binary, Api, Extern, HumanAddr};
+    use cosmwasm_std::{coins, from_binary, Api, Extern, HumanAddr, MessageInfo, Coin};
+
+    /// Just set sender and sent funds for the message. The essential for
+    /// This is intended for use in test code only.
+    pub fn mock_info<U: Into<HumanAddr>>(sender: U, sent: &[Coin]) -> MessageInfo {
+        MessageInfo {
+            sender: sender.into(),
+            sent_funds: sent.to_vec(),
+        }
+    }
+
+    // v0.10
+    // /// Just set sender and sent funds for the message. The rest uses defaults.
+    // /// The sender will be canonicalized internally to allow developers pasing in human readable senders.
+    // /// This is intended for use in test code only.
+    // pub fn mock_env<U: Into<HumanAddr>>(sender: U, sent: &[Coin]) -> Env {
+    //     Env {
+    //         block: BlockInfo {
+    //             height: 12_345,
+    //             time: 1_571_797_419,
+    //             chain_id: "cosmos-testnet-14002".to_string(),
+    //         },
+    //         message: MessageInfo {
+    //             sender: sender.into(),
+    //             sent_funds: sent.to_vec(),
+    //         },
+    //         contract: ContractInfo {
+    //             address: HumanAddr::from(MOCK_CONTRACT_ADDR),
+    //         },
+    //     }
+    // }
+
+    // v0.11
+    // /// Returns a default enviroment with height, time, chain_id, and contract address
+    // /// You can submit as is to most contracts, or modify height/time if you want to
+    // /// test for expiration.
+    // ///
+    // /// This is intended for use in test code only.
+    // pub fn mock_env() -> Env {
+    //     Env {
+    //         block: BlockInfo {
+    //             height: 12_345,
+    //             time: 1_571_797_419,
+    //             time_nanos: 879305533,
+    //             chain_id: "cosmos-testnet-14002".to_string(),
+    //         },
+    //         contract: ContractInfo {
+    //             address: HumanAddr::from(MOCK_CONTRACT_ADDR),
+    //         },
+    //     }
+    // }
 
     fn default_init_msg() -> InitMsg {
         let env = mock_env();
