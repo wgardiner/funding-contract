@@ -3,11 +3,11 @@
 use std::collections::HashMap;
 
 use cosmwasm_std::{
-    coin, to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr,
-    InitResponse, MessageInfo, Querier, StdError, StdResult, Storage, Coin,
+    coin, to_binary, Api, Binary, CanonicalAddr, Coin, Env, Extern, HandleResponse, HumanAddr,
+    InitResponse, Querier, StdError, StdResult, Storage,
 };
 
-use crate::error::ContractError;
+//use crate::error::ContractError;
 use crate::msg::{
     CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg, ProposalListResponse,
     ProposalStateResponse, QueryMsg, StateResponse,
@@ -18,10 +18,11 @@ use crate::state::{config, config_read, Distribution, Proposal, State, Vote};
 // make use of the custom errors
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
-    _env: Env,
-    info: MessageInfo,
+    env: Env,
+    //info: MessageInfo,
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
+    let info = env.message;
     // let pw: Vec<CanonicalAddr> = msg.proposer_whitelist.into_iter().map(|x| deps.api.canonical_address(&x)).collect::<Vec<CanonicalAddr>>()?;
     // TODO: this should probably just fail if the user attempts to instantiate the contract
     // with an address that can't be converted to cannonical form in the whitelists.
@@ -65,9 +66,9 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
 pub fn handle<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    info: MessageInfo,
+    //info: MessageInfo,
     msg: HandleMsg,
-) -> Result<HandleResponse, ContractError> {
+) -> StdResult<HandleResponse> {
     let state = config_read(&deps.storage).load()?;
     match msg {
         HandleMsg::CreateProposal {
@@ -75,12 +76,10 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             description,
             recipient,
             tags,
-        } => try_create_proposal(deps, env, info, state, recipient, name, description, tags),
-        HandleMsg::CreateVote { proposal_id } => {
-            try_create_vote(deps, env, info, state, proposal_id)
-        }
-        HandleMsg::CheckDistributions {} => try_check_distributions(deps, env, info, state),
-        HandleMsg::DistributeFunds {} => try_distribute_funds(deps, env, info, state),
+        } => try_create_proposal(deps, env, state, recipient, name, description, tags),
+        HandleMsg::CreateVote { proposal_id } => try_create_vote(deps, env, state, proposal_id),
+        HandleMsg::CheckDistributions {} => try_check_distributions(deps, env, state),
+        HandleMsg::DistributeFunds {} => try_distribute_funds(deps, env, state),
     }
 }
 
@@ -88,21 +87,23 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    info: MessageInfo,
+    //info: MessageInfo,
     state: State,
     // msg: CreateProposal,
     recipient: HumanAddr,
     name: String,
     description: String,
     tags: String,
-) -> Result<HandleResponse, ContractError> {
+) -> StdResult<HandleResponse> {
+    let info = env.message;
     let sender_addr = deps.api.canonical_address(&info.sender)?;
     let recipient_addr = deps.api.canonical_address(&recipient)?;
     let sender_is_valid = validate_sender(sender_addr, state.proposer_whitelist);
     if !sender_is_valid {
-        return Err(ContractError::Unauthorized {
-            list_type: "proposer".to_string(),
-        });
+        // return Err(ContractError::Unauthorized {
+        //     list_type: "proposer".to_string(),
+        // });
+        return Err(StdError::unauthorized());
     }
     let period_is_valid = validate_period(
         env.block.time,
@@ -110,13 +111,14 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
         state.proposal_period_end.unwrap(),
     );
     if !period_is_valid {
-        return Err(ContractError::InvalidPeriod {
-            period_type: "proposal".to_string(),
-        });
+        // return Err(ContractError::InvalidPeriod {
+        //     period_type: "proposal".to_string(),
+        // });
+        return Err(StdError::unauthorized());
     }
     let proposal_id = state.proposals.len() as u32;
     if sender_is_valid && period_is_valid {
-        config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
+        config(&mut deps.storage).update(|mut state| -> StdResult<State> {
             // state.count += 1;
             state.proposals.push(Proposal {
                 id: proposal_id,
@@ -131,7 +133,7 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
 
     let res = HandleResponse {
         messages: vec![],
-        attributes: vec![],
+        log: vec![],
         data: Some(to_binary(&CreateProposalResponse { proposal_id })?),
     };
     Ok(res)
@@ -156,18 +158,20 @@ pub fn validate_sender(addr: CanonicalAddr, list: Vec<CanonicalAddr>) -> bool {
 pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    info: MessageInfo,
+    //info: MessageInfo,
     state: State,
     proposal_id: u32,
-) -> Result<HandleResponse, ContractError> {
+) -> StdResult<HandleResponse> {
+    let info = env.message;
     let sender_is_valid = validate_sender(
         deps.api.canonical_address(&info.sender)?,
         state.voter_whitelist,
     );
     if !sender_is_valid {
-        return Err(ContractError::Unauthorized {
-            list_type: "voter".to_string(),
-        });
+        // return Err(ContractError::Unauthorized {
+        //     list_type: "voter".to_string(),
+        // });
+        return Err(StdError::unauthorized());
     }
     let period_is_valid = validate_period(
         env.block.time,
@@ -175,17 +179,19 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
         state.voting_period_end.unwrap(),
     );
     if !period_is_valid {
-        return Err(ContractError::InvalidPeriod {
-            period_type: "voting".to_string(),
-        });
+        // return Err(ContractError::InvalidPeriod {
+        //     period_type: "voting".to_string(),
+        // });
+        return Err(StdError::unauthorized());
     }
     let proposal_is_valid = state.proposals.len() as u32 > proposal_id;
     if !proposal_is_valid {
-        return Err(ContractError::InvalidProposal { id: proposal_id });
+        //return Err(ContractError::InvalidProposal { id: proposal_id });
+        return Err(StdError::unauthorized());
     }
     let voter = deps.api.canonical_address(&info.sender)?;
     if sender_is_valid && period_is_valid && proposal_is_valid {
-        config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
+        config(&mut deps.storage).update(|mut state| -> StdResult<State> {
             state.votes.push(Vote {
                 voter,
                 proposal: proposal_id,
@@ -201,9 +207,9 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
 pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    _info: MessageInfo,
+    //_info: MessageInfo,
     state: State,
-) -> Result<HandleResponse, ContractError> {
+) -> StdResult<HandleResponse> {
     // Distributions can only be checked after proposal period.
     let period_is_valid = validate_period(
         env.block.time,
@@ -211,9 +217,10 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
         state.voting_period_end.unwrap(),
     );
     if !period_is_valid {
-        return Err(ContractError::InvalidPeriod {
-            period_type: "voting".to_string(),
-        });
+        // return Err(ContractError::InvalidPeriod {
+        //     period_type: "voting".to_string(),
+        // });
+        return Err(StdError::unauthorized());
     }
 
     let distributions: Vec<Distribution> = calculate_distributions(
@@ -224,7 +231,7 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
 
     let res = HandleResponse {
         messages: vec![],
-        attributes: vec![],
+        log: vec![],
         data: Some(to_binary(&CheckDistributionsResponse { distributions })?),
     };
     Ok(res)
@@ -233,24 +240,28 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
 pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
-    info: MessageInfo,
+    //info: MessageInfo,
     state: State,
-) -> Result<HandleResponse, ContractError> {
+) -> StdResult<HandleResponse> {
     // Only the contract owner can distribute funds.
-    let sender_is_valid =
-        validate_sender(deps.api.canonical_address(&info.sender)?, vec![state.owner]);
+    let sender_is_valid = validate_sender(
+        deps.api.canonical_address(&env.message.sender)?,
+        vec![state.owner],
+    );
     if !sender_is_valid {
-        return Err(ContractError::Unauthorized {
-            list_type: "owner".to_string(),
-        });
+        // return Err(ContractError::Unauthorized {
+        //     list_type: "owner".to_string(),
+        // });
+        return Err(StdError::unauthorized());
     }
     // Distributions can only be checked after proposal period.
     let period_is_valid =
         validate_period(env.block.time, state.voting_period_end.unwrap(), u64::MAX);
     if !period_is_valid {
-        return Err(ContractError::InvalidPeriod {
-            period_type: "voting".to_string(),
-        });
+        // return Err(ContractError::InvalidPeriod {
+        //     period_type: "voting".to_string(),
+        // });
+        return Err(StdError::unauthorized());
     }
 
     let distributions: Vec<Distribution> = calculate_distributions(
@@ -265,7 +276,7 @@ pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
     // Should this return the same Vec<Distribution> data as CheckDistributions?
     let res = HandleResponse {
         messages: vec![],
-        attributes: vec![],
+        log: vec![],
         data: Some(to_binary(&CheckDistributionsResponse { distributions })?),
     };
     Ok(res)
@@ -315,7 +326,7 @@ pub fn calculate_distributions(
         proposal: u32,
         votes: Vec<f64>,
         distribution_ideal: f64,
-        subsidy_ideal: f64
+        subsidy_ideal: f64,
     }
 
     let ideal_results: Vec<_> = proposals
@@ -328,7 +339,8 @@ pub fn calculate_distributions(
                 .map(|v| v.amount[0].amount.u128() as f64)
                 .collect();
 
-            let distribution_ideal: f64 = proposal_votes.iter().map(|v| v.sqrt()).sum::<f64>().powi(2);
+            let distribution_ideal: f64 =
+                proposal_votes.iter().map(|v| v.sqrt()).sum::<f64>().powi(2);
             let subsidy_ideal: f64 = distribution_ideal - proposal_votes.iter().sum::<f64>();
             DistIdeal {
                 proposal: p.id,
@@ -339,13 +351,15 @@ pub fn calculate_distributions(
         })
         .collect();
 
-    let constraint_factor: f64 = ideal_results.iter().map(|x| x.subsidy_ideal).sum::<f64>() / budget_value;
+    let constraint_factor: f64 =
+        ideal_results.iter().map(|x| x.subsidy_ideal).sum::<f64>() / budget_value;
 
     ideal_results
         .iter()
         .map(|p| {
             let total_votes: f64 = p.votes.iter().sum();
-            let distribution_actual: f64 = (p.distribution_ideal - total_votes) / constraint_factor + total_votes;
+            let distribution_actual: f64 =
+                (p.distribution_ideal - total_votes) / constraint_factor + total_votes;
             let subsidy_actual: f64 = distribution_actual - total_votes;
             Distribution {
                 proposal: p.proposal,
@@ -357,12 +371,23 @@ pub fn calculate_distributions(
             }
         })
         .collect()
+
+    // proposals.iter().map(|p| {
+    //     Distribution {
+    //         proposal: p.id,
+    //         votes: vec![coin(1, "shell")],
+    //         distribution_ideal: coin(1, "shell"),
+    //         subsidy_ideal: coin(1, "shell"),
+    //         distribution_actual: coin(1, "shell"),
+    //         subsidy_actual: coin(1, "shell"),
+    //     }
+    // }).collect()
 }
 
 // TODO: Add query Proposal + Votes by Proposal ID.
 pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
-    _env: Env,
+    //_env: Env,
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {

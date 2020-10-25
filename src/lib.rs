@@ -1,5 +1,6 @@
 pub mod contract;
-pub mod error;
+// exclude error module for cosmwasm v0.10.0
+//pub mod error;
 pub mod msg;
 pub mod state;
 
