@@ -159,6 +159,7 @@ const idealResults = simplified.map((p) => {
 })
 
 const constraintFactor = sum(idealResults.map((p) => p.subsidyIdeal)) / subsidyPoolConstrained;
+console.log('constraint factor', constraintFactor);
 
 const results = idealResults.map((p) => {
   const totalVotes = sum(p.votes);
