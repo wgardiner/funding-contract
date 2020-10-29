@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use num_integer::sqrt;
 
 use cosmwasm_std::{
-    coin, to_binary, Api, Binary, CanonicalAddr, Env, Extern, HandleResponse, HumanAddr,
-    InitResponse, MessageInfo, Querier, StdError, StdResult, Storage, Coin,
+    coin, to_binary, Api, Binary, CanonicalAddr, Coin, Env, Extern, HandleResponse, HumanAddr,
+    InitResponse, MessageInfo, Querier, StdError, StdResult, Storage,
 };
 
 use crate::error::ContractError;
@@ -305,7 +305,6 @@ pub fn calculate_distributions(
     proposals: Vec<Proposal>,
     budget_contstraint: Vec<Coin>,
 ) -> Vec<Distribution> {
-
     let math_factor = 1_000_000u128;
     // let n: u32 = 25;
     // let s = (n as f64).sqrt() as u32;
@@ -325,7 +324,7 @@ pub fn calculate_distributions(
         // subsidy_ideal: f64
         votes: Vec<u128>,
         distribution_ideal: u128,
-        subsidy_ideal: u128
+        subsidy_ideal: u128,
     }
 
     let ideal_results: Vec<_> = proposals
@@ -342,7 +341,8 @@ pub fn calculate_distributions(
 
             // let distribution_ideal: f64 = proposal_votes.iter().map(|v| v.sqrt()).sum::<f64>().powi(2);
             // let subsidy_ideal: f64 = distribution_ideal - proposal_votes.iter().sum::<f64>();
-            let distribution_ideal: u128 = proposal_votes.iter().map(|v| sqrt(*v)).sum::<u128>().pow(2);
+            let distribution_ideal: u128 =
+                proposal_votes.iter().map(|v| sqrt(*v)).sum::<u128>().pow(2);
             let subsidy_ideal: u128 = distribution_ideal - proposal_votes.iter().sum::<u128>();
             DistIdeal {
                 proposal: p.id,
@@ -354,7 +354,8 @@ pub fn calculate_distributions(
         .collect();
 
     // let constraint_factor: f64 = ideal_results.iter().map(|x| x.subsidy_ideal).sum::<f64>() / budget_value;
-    let constraint_factor: u128 = math_factor * ideal_results.iter().map(|x| x.subsidy_ideal).sum::<u128>() / budget_value;
+    let constraint_factor: u128 =
+        math_factor * ideal_results.iter().map(|x| x.subsidy_ideal).sum::<u128>() / budget_value;
 
     ideal_results
         .iter()
@@ -363,13 +364,17 @@ pub fn calculate_distributions(
             // let distribution_actual: f64 = (p.distribution_ideal - total_votes) / constraint_factor + total_votes;
             // let subsidy_actual: f64 = distribution_actual - total_votes;
             let total_votes: u128 = p.votes.iter().sum();
-            let distribution_actual: u128 = math_factor * (p.distribution_ideal - total_votes) / constraint_factor + total_votes ;
-            println!("---------dist actual:{}, ideal: {}, total: {}", distribution_actual, p.distribution_ideal, total_votes);
-            let subsidy_actual: u128 = (distribution_actual - total_votes);
-            println!("---------subsidy actual:{}, ideal: {}", subsidy_actual, p.subsidy_ideal);
+            let distribution_actual: u128 = math_factor * (p.distribution_ideal - total_votes)
+                / constraint_factor
+                + total_votes;
+            let subsidy_actual: u128 = distribution_actual - total_votes;
             Distribution {
                 proposal: p.proposal,
-                votes: p.votes.iter().map(|v| coin((*v * math_factor) as u128, "shell")).collect(),
+                votes: p
+                    .votes
+                    .iter()
+                    .map(|v| coin((*v * math_factor) as u128, "shell"))
+                    .collect(),
                 distribution_ideal: coin((p.distribution_ideal * math_factor) as u128, "shell"),
                 subsidy_ideal: coin((p.subsidy_ideal * math_factor) as u128, "shell"),
                 distribution_actual: coin((distribution_actual / math_factor) as u128, "shell"),

@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod tests {
-    use crate::contract::{get_unique_votes, calculate_distributions, handle, init, query};
+    use crate::contract::{calculate_distributions, get_unique_votes, handle, init, query};
     use crate::error::ContractError;
     use crate::msg::{
         CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg,
         ProposalListResponse, ProposalStateResponse, QueryMsg, StateResponse,
     };
-    use crate::state::{config_read, Vote, Proposal, Distribution};
+    use crate::state::{config_read, Distribution, Proposal, Vote};
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{Coin, coins, from_binary, Api, Extern, HumanAddr};
+    use cosmwasm_std::{coins, from_binary, Api, Coin, Extern, HumanAddr};
 
     fn default_init_msg() -> InitMsg {
         let env = mock_env();
@@ -420,7 +420,12 @@ mod tests {
         assert_eq!(coins(1000, "earth"), value.votes[0].amount);
     }
 
-    fn mock_vote(mut deps: &mut Extern<MockStorage, MockApi, MockQuerier>, voter: String, proposal_id: u32, amount: Vec<Coin>) {
+    fn mock_vote(
+        mut deps: &mut Extern<MockStorage, MockApi, MockQuerier>,
+        voter: String,
+        proposal_id: u32,
+        amount: Vec<Coin>,
+    ) {
         // create vote.
         let vote_msg = HandleMsg::CreateVote { proposal_id };
         let info = mock_info(voter, &amount);
@@ -673,26 +678,59 @@ mod tests {
             Proposal {
                 id: 0,
                 name: "Proposal 0".to_string(),
-                recipient: deps.api.canonical_address(&HumanAddr("recipient_0".to_string())).unwrap(),
+                recipient: deps
+                    .api
+                    .canonical_address(&HumanAddr("recipient_0".to_string()))
+                    .unwrap(),
                 description: "an okay proposal".to_string(),
                 tags: "money".to_string(),
             },
             Proposal {
                 id: 1,
                 name: "Proposal 1".to_string(),
-                recipient: deps.api.canonical_address(&HumanAddr("recipient_1".to_string())).unwrap(),
+                recipient: deps
+                    .api
+                    .canonical_address(&HumanAddr("recipient_1".to_string()))
+                    .unwrap(),
                 description: "an better proposal".to_string(),
                 tags: "stuffed animals, parrots".to_string(),
             },
         ];
-        let result: Vec<Distribution> = calculate_distributions(votes, proposals, coins(50, "shell"));
+        let result: Vec<Distribution> =
+            calculate_distributions(votes, proposals, coins(50, "shell"));
         // println!("{:#?}", result);
         assert_eq!(result.len(), 2);
-        let distributions_for_prop_0: Vec<Distribution> = result.clone().into_iter().filter(|d| d.proposal == 0).collect();
-        let distributions_for_prop_1: Vec<Distribution> = result.clone().into_iter().filter(|d| d.proposal == 1).collect();
-        assert_eq!(distributions_for_prop_0[0].subsidy_actual.amount.u128(), 7 as u128);
-        assert_eq!(distributions_for_prop_1[0].subsidy_actual.amount.u128(), 42 as u128);
-        assert_eq!(distributions_for_prop_0[0].distribution_actual.amount.u128(), 12 as u128);
-        assert_eq!(distributions_for_prop_1[0].distribution_actual.amount.u128(), 67 as u128);
+        let distributions_for_prop_0: Vec<Distribution> = result
+            .clone()
+            .into_iter()
+            .filter(|d| d.proposal == 0)
+            .collect();
+        let distributions_for_prop_1: Vec<Distribution> = result
+            .clone()
+            .into_iter()
+            .filter(|d| d.proposal == 1)
+            .collect();
+        assert_eq!(
+            distributions_for_prop_0[0].subsidy_actual.amount.u128(),
+            7 as u128
+        );
+        assert_eq!(
+            distributions_for_prop_1[0].subsidy_actual.amount.u128(),
+            42 as u128
+        );
+        assert_eq!(
+            distributions_for_prop_0[0]
+                .distribution_actual
+                .amount
+                .u128(),
+            12 as u128
+        );
+        assert_eq!(
+            distributions_for_prop_1[0]
+                .distribution_actual
+                .amount
+                .u128(),
+            67 as u128
+        );
     }
 }
