@@ -10,7 +10,7 @@ mod tests {
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
     };
-    use cosmwasm_std::{coins, from_binary, Api, Extern, HumanAddr};
+    use cosmwasm_std::{Coin, coins, from_binary, Api, Extern, HumanAddr};
 
     fn default_init_msg() -> InitMsg {
         let env = mock_env();
@@ -420,6 +420,19 @@ mod tests {
         assert_eq!(coins(1000, "earth"), value.votes[0].amount);
     }
 
+    fn mock_vote(mut deps: &mut Extern<MockStorage, MockApi, MockQuerier>, voter: String, proposal_id: u32, amount: Vec<Coin>) {
+        // create vote.
+        let vote_msg = HandleMsg::CreateVote { proposal_id };
+        let info = mock_info(voter, &amount);
+
+        // set the time to the voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 3;
+
+        // send message.
+        let _res = handle(&mut deps, env, info, vote_msg).unwrap();
+    }
+
     #[test]
     fn unique_votes() {
         let deps = mock_dependencies(&[]);
@@ -517,11 +530,14 @@ mod tests {
 
     #[test]
     fn check_distributions() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies(&coins(50, "earth"));
         mock_init(&mut deps, default_init_msg());
         mock_proposal(&mut deps, default_proposal_msg());
         mock_proposal(&mut deps, default_proposal_msg());
-        mock_proposal(&mut deps, default_proposal_msg());
+        mock_vote(&mut deps, "voter_0".to_string(), 0, coins(1, "earth"));
+        mock_vote(&mut deps, "voter_1".to_string(), 0, coins(4, "earth"));
+        mock_vote(&mut deps, "voter_2".to_string(), 1, coins(9, "earth"));
+        mock_vote(&mut deps, "voter_0".to_string(), 1, coins(16, "earth"));
 
         // anyone can check the distributions.
         let info = mock_info("any_user", &coins(1000, "earth"));
@@ -587,11 +603,14 @@ mod tests {
 
     #[test]
     fn distribute_funds() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies(&coins(50, "earth"));
         mock_init(&mut deps, default_init_msg());
         mock_proposal(&mut deps, default_proposal_msg());
         mock_proposal(&mut deps, default_proposal_msg());
-        mock_proposal(&mut deps, default_proposal_msg());
+        mock_vote(&mut deps, "voter_0".to_string(), 0, coins(1, "earth"));
+        mock_vote(&mut deps, "voter_1".to_string(), 0, coins(4, "earth"));
+        mock_vote(&mut deps, "voter_2".to_string(), 1, coins(9, "earth"));
+        mock_vote(&mut deps, "voter_0".to_string(), 1, coins(16, "earth"));
 
         // owner can distribute funds.
         let info = mock_info("owner", &coins(1000, "earth"));
