@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use num_integer::sqrt;
+use integer_sqrt::IntegerSquareRoot;
 
 use cosmwasm_std::{
     attr, coin, to_binary, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Env, Extern,
@@ -343,8 +343,11 @@ pub fn calculate_distributions(
 
             // let distribution_ideal: f64 = proposal_votes.iter().map(|v| v.sqrt()).sum::<f64>().powi(2);
             // let subsidy_ideal: f64 = distribution_ideal - proposal_votes.iter().sum::<f64>();
-            let distribution_ideal: u128 =
-                proposal_votes.iter().map(|v| sqrt(*v)).sum::<u128>().pow(2);
+            let distribution_ideal: u128 = proposal_votes
+                .iter()
+                .map(|v| v.integer_sqrt())
+                .sum::<u128>()
+                .pow(2);
             let subsidy_ideal: u128 = distribution_ideal - proposal_votes.iter().sum::<u128>();
             DistIdeal {
                 proposal: p.id,
