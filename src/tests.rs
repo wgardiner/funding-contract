@@ -627,13 +627,10 @@ mod tests {
         // send message.
         let msg = HandleMsg::DistributeFunds {};
         let res = handle(&mut deps, env, info, msg).unwrap();
-        let data = res.data.unwrap();
-        let value: CheckDistributionsResponse = from_binary(&data).unwrap();
 
-        // assert there is a ProposalDistribution for every proposal.
+        // assert there is a Distribution for every proposal.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(state.proposals.len(), value.distributions.len());
-
+        assert_eq!(state.proposals.len(), res.messages.len(),)
         // TODO: Assert that proposal recipients got funds.
     }
 

@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use num_integer::sqrt;
 
 use cosmwasm_std::{
-    coin, to_binary, Api, Binary, CanonicalAddr, Coin, Env, Extern, HandleResponse, HumanAddr,
-    InitResponse, MessageInfo, Querier, StdError, StdResult, Storage,
+    attr, coin, to_binary, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Env, Extern,
+    HandleResponse, HumanAddr, InitResponse, MessageInfo, Querier, StdError, StdResult, Storage,
 };
 
 use crate::error::ContractError;
@@ -262,15 +262,16 @@ pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
     );
 
     // TODO: Send funds to proposal recipients.
+    send_distributions(deps, env, distributions, &"distribute funds".to_string())
 
     // TODO: Finalize response data.
     // Should this return the same Vec<Distribution> data as CheckDistributions?
-    let res = HandleResponse {
-        messages: vec![],
-        attributes: vec![],
-        data: Some(to_binary(&CheckDistributionsResponse { distributions })?),
-    };
-    Ok(res)
+    // let res = HandleResponse {
+    //     messages: vec![],
+    //     attributes: vec![],
+    //     data: Some(to_binary(&CheckDistributionsResponse { distributions })?),
+    // };
+    // Ok(res)
 }
 
 pub fn get_unique_votes(votes: &[Vote]) -> Vec<Vote> {
@@ -319,6 +320,7 @@ pub fn calculate_distributions(
 
     struct DistIdeal {
         proposal: u32,
+        recipient: CanonicalAddr,
         // votes: Vec<f64>,
         // distribution_ideal: f64,
         // subsidy_ideal: f64
@@ -328,7 +330,7 @@ pub fn calculate_distributions(
     }
 
     let ideal_results: Vec<_> = proposals
-        .iter()
+        .into_iter()
         .map(|p| {
             // Convert votes to a nicer format
             // let proposal_votes: Vec<f64> = unique_votes
@@ -346,6 +348,7 @@ pub fn calculate_distributions(
             let subsidy_ideal: u128 = distribution_ideal - proposal_votes.iter().sum::<u128>();
             DistIdeal {
                 proposal: p.id,
+                recipient: p.recipient,
                 votes: proposal_votes,
                 distribution_ideal,
                 subsidy_ideal,
@@ -358,7 +361,7 @@ pub fn calculate_distributions(
         math_factor * ideal_results.iter().map(|x| x.subsidy_ideal).sum::<u128>() / budget_value;
 
     ideal_results
-        .iter()
+        .into_iter()
         .map(|p| {
             // let total_votes: f64 = p.votes.iter().sum();
             // let distribution_actual: f64 = (p.distribution_ideal - total_votes) / constraint_factor + total_votes;
@@ -370,6 +373,7 @@ pub fn calculate_distributions(
             let subsidy_actual: u128 = distribution_actual - total_votes;
             Distribution {
                 proposal: p.proposal,
+                recipient: p.recipient,
                 votes: p
                     .votes
                     .iter()
@@ -391,6 +395,35 @@ pub fn calculate_distributions(
     //     subsidy_ideal: coin(1, "SHELL"),
     //     subsidy_actual: coin(1, "SHELL"),
     // }]
+}
+
+fn send_distributions<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    distributions: Vec<Distribution>,
+    action: &str,
+) -> Result<HandleResponse, ContractError> {
+    let attributes = vec![attr("action", action)];
+
+    let messages = distributions
+        .into_iter()
+        .map(|d| {
+            let contract_address = env.contract.address.clone();
+            let recipient = deps.api.human_address(&d.recipient).unwrap();
+            CosmosMsg::Bank(BankMsg::Send {
+                from_address: contract_address,
+                to_address: recipient,
+                amount: vec![d.distribution_actual],
+            })
+        })
+        .collect();
+
+    let r = HandleResponse {
+        messages,
+        data: None,
+        attributes,
+    };
+    Ok(r)
 }
 
 // TODO: Add query Proposal + Votes by Proposal ID.

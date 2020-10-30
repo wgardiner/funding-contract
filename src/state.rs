@@ -49,6 +49,7 @@ pub struct Vote {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Distribution {
     pub proposal: u32, // reference to proposal id
+    pub recipient: CanonicalAddr,
     pub votes: Vec<Coin>,
     pub distribution_ideal: Coin,
     pub subsidy_ideal: Coin,
