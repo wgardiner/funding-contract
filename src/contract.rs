@@ -222,11 +222,17 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
         state.votes,
         state.proposals,
         deps.querier.query_all_balances(&env.contract.address)?,
+        // vec![coin(100_000, "ucosm")],
     );
 
     let res = HandleResponse {
         messages: vec![],
-        attributes: vec![],
+        attributes: vec![
+            // attr(
+            //     "messages",
+            //     to_binary(&CheckDistributionsResponse { distributions.clone() })?
+            // )
+        ],
         data: Some(to_binary(&CheckDistributionsResponse { distributions })?),
     };
     Ok(res)
@@ -248,7 +254,8 @@ pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
     }
     // Distributions can only be checked after proposal period.
     let period_is_valid =
-        validate_period(env.block.time, state.voting_period_end.unwrap(), u64::MAX);
+        // validate_period(env.block.time, state.voting_period_end.unwrap(), u64::MAX);
+        true;
     if !period_is_valid {
         return Err(ContractError::InvalidPeriod {
             period_type: "voting".to_string(),
@@ -385,10 +392,6 @@ pub fn calculate_distributions(
                 .map(|v| v.integer_sqrt())
                 .sum::<u128>()
                 .pow(2);
-            println!(
-                "dist_ideal: {}, sum of prop votes {}",
-                distribution_ideal, proposal_votes.iter().sum::<u128>()
-            );
 
             let total_votes: u128 = proposal_votes.iter().sum();
             let subsidy_ideal: u128 = match distribution_ideal > total_votes {
@@ -409,7 +412,6 @@ pub fn calculate_distributions(
     // let constraint_factor: f64 = ideal_results.iter().map(|x| x.subsidy_ideal).sum::<f64>() / budget_value;
     let constraint_factor: u128 =
         math_factor * ideal_results.iter().map(|x| x.subsidy_ideal).sum::<u128>() / budget_value;
-    println!("constraint_factor: {:?}", constraint_factor);
 
     ideal_results
         .into_iter()
@@ -427,13 +429,6 @@ pub fn calculate_distributions(
                 / constraint_factor
                 + total_votes;
             let subsidy_actual: u128 = distribution_actual - total_votes;
-            println!(
-                "-----------\n total_votes: {:?} \ndistribution_actual: {:?}\n subsidyActual: {:?}\ndistribution_ideal: {:?}",
-                total_votes as f64 / 1e6,
-                distribution_actual as f64 / 1e6,
-                subsidy_actual as f64 / 1e6,
-                p.distribution_ideal as f64 / 1e6,
-            );
             Distribution {
                 proposal: p.proposal,
                 recipient: p.recipient,
@@ -473,16 +468,28 @@ fn send_distributions<S: Storage, A: Api, Q: Querier>(
 ) -> Result<HandleResponse, ContractError> {
     let attributes = vec![attr("action", action)];
 
+    // it should cost ~800 ucosm to send a
+    let send_cost = 1000;
     let messages = distributions
         .into_iter()
-        .map(|d| {
+        .filter_map(|d| {
             let contract_address = env.contract.address.clone();
             let recipient = deps.api.human_address(&d.recipient).unwrap();
-            CosmosMsg::Bank(BankMsg::Send {
-                from_address: contract_address,
-                to_address: recipient,
-                amount: vec![d.distribution_actual],
-            })
+            let amount_send = match d.distribution_actual.amount.u128() > send_cost {
+                true => d.distribution_actual.amount.u128() - send_cost,
+                false => 0,
+            };
+            if amount_send > 0 {
+                Some(
+                    CosmosMsg::Bank(BankMsg::Send {
+                        from_address: contract_address,
+                        to_address: recipient,
+                        amount: vec![d.distribution_actual],
+                    })
+                )
+            } else {
+                None
+            }
         })
         .collect();
 

@@ -7,22 +7,22 @@ interface Vote {
 const votes: Vote[] = [
   {
     voter: 'voter_0',
-    amount: 1,
+    amount: 1000,
     proposalId: 'proposal_0',
   },
   {
     voter: 'voter_1',
-    amount: 4,
+    amount: 4000,
     proposalId: 'proposal_0',
   },
   {
     voter: 'voter_2',
-    amount: 9,
+    amount: 9000,
     proposalId: 'proposal_1',
   },
   {
     voter: 'voter_0',
-    amount: 16,
+    amount: 16000,
     proposalId: 'proposal_1',
   },
   {
