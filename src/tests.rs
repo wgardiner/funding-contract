@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::contract::{calculate_distributions, get_unique_votes, handle, init, query};
+    use crate::contract::{calculate_distributions, get_normalized_votes, handle, init, query};
     use crate::error::ContractError;
     use crate::msg::{
         CheckDistributionsResponse, CreateProposalResponse, HandleMsg, InitMsg,
@@ -475,7 +475,7 @@ mod tests {
                 amount: coins(1, "earth"),
             },
         ];
-        let result = get_unique_votes(&votes);
+        let result = get_normalized_votes(&votes);
         assert_eq!(result.len(), 3);
         let pretty_result: Vec<_> = result
             .iter()
@@ -484,6 +484,7 @@ mod tests {
                     x.proposal,
                     deps.api.human_address(&x.voter).unwrap(),
                     x.amount[0].amount.u128(),
+                    x.amount[0].denom.clone(),
                 )
             })
             .collect();
@@ -497,14 +498,19 @@ mod tests {
             .filter(|x| &*x.1 == "voter_1")
             .collect();
         assert_eq!(votes_by_voter_1.len(), 1);
-        assert_eq!(votes_by_voter_1[0].2, 1);
+        assert_eq!(votes_by_voter_1[0].2, 1_000_000);
+        assert_eq!(votes_by_voter_1[0].3, "uearth");
+        // println!("{:?}", votes_by_voter_1);
+        // assert_eq!(votes_by_voter_1[0].2, 1_000_000);
 
         let votes_for_prop_0_by_voter_0: Vec<_> = pretty_result
             .iter()
             .filter(|x| &*x.1 == "voter_0" && x.0 == 0)
             .collect();
         assert_eq!(votes_for_prop_0_by_voter_0.len(), 1);
-        assert_eq!(votes_for_prop_0_by_voter_0[0].2, 2);
+        assert_eq!(votes_for_prop_0_by_voter_0[0].2, 2_000_000);
+        assert_eq!(votes_for_prop_0_by_voter_0[0].3, "uearth");
+
         // println!("{:#?}", pretty_result);
     }
 
@@ -539,10 +545,12 @@ mod tests {
         mock_init(&mut deps, default_init_msg());
         mock_proposal(&mut deps, default_proposal_msg());
         mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
         mock_vote(&mut deps, "voter_0".to_string(), 0, coins(1, "earth"));
         mock_vote(&mut deps, "voter_1".to_string(), 0, coins(4, "earth"));
         mock_vote(&mut deps, "voter_2".to_string(), 1, coins(9, "earth"));
         mock_vote(&mut deps, "voter_0".to_string(), 1, coins(16, "earth"));
+        mock_vote(&mut deps, "voter_0".to_string(), 2, coins(200, "earth"));
 
         // anyone can check the distributions.
         let info = mock_info("any_user", &coins(1000, "earth"));
@@ -557,6 +565,7 @@ mod tests {
         let data = res.data.unwrap();
         let value: CheckDistributionsResponse = from_binary(&data).unwrap();
 
+        println!("{:?}", value);
         // assert there is a ProposalDistribution for every proposal.
         let state = config_read(&deps.storage).load().unwrap();
         assert_eq!(state.proposals.len(), value.distributions.len());
@@ -608,7 +617,8 @@ mod tests {
 
     #[test]
     fn distribute_funds() {
-        let mut deps = mock_dependencies(&coins(50, "earth"));
+        // let mut deps = mock_dependencies(&coins(50, "earth"));
+        let mut deps = mock_dependencies(&coins(100, "earth"));
         mock_init(&mut deps, default_init_msg());
         mock_proposal(&mut deps, default_proposal_msg());
         mock_proposal(&mut deps, default_proposal_msg());
@@ -694,7 +704,7 @@ mod tests {
             },
         ];
         let result: Vec<Distribution> =
-            calculate_distributions(votes, proposals, coins(50, "shell"));
+            calculate_distributions(votes, proposals, coins(100, "shell"));
         // println!("{:#?}", result);
         assert_eq!(result.len(), 2);
         let distributions_for_prop_0: Vec<Distribution> = result
@@ -709,25 +719,25 @@ mod tests {
             .collect();
         assert_eq!(
             distributions_for_prop_0[0].subsidy_actual.amount.u128(),
-            7 as u128
+            14285714 as u128
         );
         assert_eq!(
             distributions_for_prop_1[0].subsidy_actual.amount.u128(),
-            42 as u128
+            85714285 as u128
         );
         assert_eq!(
             distributions_for_prop_0[0]
                 .distribution_actual
                 .amount
                 .u128(),
-            12 as u128
+            19285714 as u128
         );
         assert_eq!(
             distributions_for_prop_1[0]
                 .distribution_actual
                 .amount
                 .u128(),
-            67 as u128
+            110714285 as u128
         );
     }
 }

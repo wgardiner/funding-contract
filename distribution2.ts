@@ -25,6 +25,16 @@ const votes: Vote[] = [
     amount: 16,
     proposalId: 'proposal_1',
   },
+  {
+    voter: 'voter_0',
+    amount: 200,
+    proposalId: 'proposal_2',
+  },
+  {
+    voter: 'voter_1',
+    amount: 1,
+    proposalId: 'proposal_2',
+  },
 ]
 
 const proposals = [
@@ -34,7 +44,13 @@ const proposals = [
   {
     id: 'proposal_1',
   },
+  {
+    id: 'proposal_2',
+  },
 ];
+
+const subsidyPoolConstrained = 50;
+
 
 
 const reducedVotesByProp = votes.reduce((r, x) => {
@@ -107,7 +123,6 @@ console.log('merged', JSON.stringify(merged, null, '  '));
 //   r = r.find(v => v.proposal)
 // }, []);
 
-const subsidyPoolConstrained = 50;
 const sum = (array) => array.reduce((r, x) => r + x, 0);
 // calculate F^(p,LR)
 // const calcIdealProjectDist = (projectContributions) => Math.pow(
