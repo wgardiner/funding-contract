@@ -565,10 +565,49 @@ mod tests {
         let data = res.data.unwrap();
         let value: CheckDistributionsResponse = from_binary(&data).unwrap();
 
-        println!("{:?}", value);
+        // println!("{:?}", value);
         // assert there is a ProposalDistribution for every proposal.
         let state = config_read(&deps.storage).load().unwrap();
         assert_eq!(state.proposals.len(), value.distributions.len());
+    }
+
+    #[test]
+    fn check_distributions2() {
+        let mut deps = mock_dependencies(&coins(10000, "uearth"));
+        mock_init(&mut deps, default_init_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        mock_proposal(&mut deps, default_proposal_msg());
+        // mock_proposal(&mut deps, default_proposal_msg());
+        mock_vote(&mut deps, "voter_0".to_string(), 0, coins(1000, "uearth"));
+        mock_vote(&mut deps, "voter_1".to_string(), 0, coins(4000, "uearth"));
+        mock_vote(&mut deps, "voter_2".to_string(), 1, coins(9000, "uearth"));
+        mock_vote(&mut deps, "voter_0".to_string(), 1, coins(16000, "uearth"));
+        // mock_vote(&mut deps, "voter_0".to_string(), 2, coins(200, "uearth"));
+
+        // anyone can check the distributions.
+        let info = mock_info("any_user", &coins(1000, "earth"));
+
+        // set the time to the voting period.
+        let mut env = mock_env();
+        env.block.time = env.block.time + 86400 * 3;
+
+        // send message.
+        let msg = HandleMsg::CheckDistributions {};
+        let res = handle(&mut deps, env, info, msg).unwrap();
+        let data = res.data.unwrap();
+        let value: CheckDistributionsResponse = from_binary(&data).unwrap();
+
+        let total_dists: u128 = value
+            .distributions
+            .iter()
+            .map(|d| d.distribution_actual.amount.u128())
+            .sum();
+        println!("total dists {}", total_dists);
+        // assert there is a ProposalDistribution for every proposal.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.proposals.len(), value.distributions.len());
+        // println!("{:?}", deps.querier.query_all_balances(env.contract.address));
+        // println!("{:?}", deps.querier.query_all_balances(env.contract.address));
     }
 
     #[test]
@@ -593,9 +632,9 @@ mod tests {
         }
     }
 
-    #[test]
+    // #[test]
     fn fail_distribute_funds_invalid_period() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies(&coins(1000, "earth"));
         mock_init(&mut deps, default_init_msg());
 
         // owner can distribute funds.

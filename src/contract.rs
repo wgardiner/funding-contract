@@ -228,10 +228,19 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
     let res = HandleResponse {
         messages: vec![],
         attributes: vec![
-            // attr(
-            //     "messages",
-            //     to_binary(&CheckDistributionsResponse { distributions.clone() })?
-            // )
+            attr(
+                "distributions",
+                to_binary(&CheckDistributionsResponse {
+                    distributions: distributions.clone(),
+                })?,
+            ),
+            attr(
+                "balance",
+                format!(
+                    "{:?}",
+                    deps.querier.query_all_balances(env.contract.address)?
+                ),
+            ),
         ],
         data: Some(to_binary(&CheckDistributionsResponse { distributions })?),
     };
@@ -281,8 +290,8 @@ pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
     // Ok(res)
 }
 
-pub fn is_coin_micro(denom: &String) -> bool {
-    denom.as_str().chars().nth(0).unwrap() == 'u'
+pub fn is_coin_micro(denom: &str) -> bool {
+    denom.starts_with('u')
 }
 
 pub fn get_normalized_votes(votes: &[Vote]) -> Vec<Vote> {
@@ -294,11 +303,7 @@ pub fn get_normalized_votes(votes: &[Vote]) -> Vec<Vote> {
         let mut new_denom = denom.clone();
         let mut math_factor = 1u128;
         if !is_coin_micro(denom) {
-            new_denom = format!(
-                "{}{}",
-                "u",
-                denom.to_string()
-            );
+            new_denom = format!("{}{}", "u", denom.to_string());
             math_factor *= 1_000_000u128;
         }
 
@@ -340,17 +345,12 @@ pub fn calculate_distributions(
     let mut new_denom = denom.clone();
     let math_factor = 1_000_000u128;
 
-
     // let budget_value = budget_contstraint[0].amount.u128() as u128 * math_factor;
     let mut budget_value = budget_contstraint[0].amount.u128() as u128;
     // Multiply values so that we don't have to convert to floats
 
     if !is_coin_micro(&budget_contstraint[0].denom) {
-        new_denom = format!(
-            "{}{}",
-            "u".to_string(),
-            denom.to_string()
-        );
+        new_denom = format!("{}{}", "u".to_string(), denom.to_string());
         budget_value *= math_factor;
 
         // math_factor *= math_factor;
@@ -425,9 +425,8 @@ pub fn calculate_distributions(
                 true => p.distribution_ideal - total_votes,
                 false => 0,
             };
-            let distribution_actual: u128 = math_factor * scary_term
-                / constraint_factor
-                + total_votes;
+            let distribution_actual: u128 =
+                math_factor * scary_term / constraint_factor + total_votes;
             let subsidy_actual: u128 = distribution_actual - total_votes;
             Distribution {
                 proposal: p.proposal,
@@ -480,13 +479,13 @@ fn send_distributions<S: Storage, A: Api, Q: Querier>(
                 false => 0,
             };
             if amount_send > 0 {
-                Some(
-                    CosmosMsg::Bank(BankMsg::Send {
-                        from_address: contract_address,
-                        to_address: recipient,
-                        amount: vec![d.distribution_actual],
-                    })
-                )
+                Some(CosmosMsg::Bank(BankMsg::Send {
+                    from_address: contract_address,
+                    to_address: recipient,
+                    // amount: vec![d.distribution_actual],
+                    amount: vec![coin(amount_send, "ucosm")],
+                    // amount: vec![coin(10, "ucosm")],
+                }))
             } else {
                 None
             }

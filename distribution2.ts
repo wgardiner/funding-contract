@@ -12,12 +12,12 @@ const votes: Vote[] = [
   },
   {
     voter: 'voter_1',
-    amount: 4000,
+    amount: 9000,
     proposalId: 'proposal_0',
   },
   {
     voter: 'voter_2',
-    amount: 9000,
+    amount: 4000,
     proposalId: 'proposal_1',
   },
   {
@@ -25,16 +25,16 @@ const votes: Vote[] = [
     amount: 16000,
     proposalId: 'proposal_1',
   },
-  {
-    voter: 'voter_0',
-    amount: 200,
-    proposalId: 'proposal_2',
-  },
-  {
-    voter: 'voter_1',
-    amount: 1,
-    proposalId: 'proposal_2',
-  },
+  // {
+  //   voter: 'voter_0',
+  //   amount: 200,
+  //   proposalId: 'proposal_2',
+  // },
+  // {
+  //   voter: 'voter_1',
+  //   amount: 1,
+  //   proposalId: 'proposal_2',
+  // },
 ]
 
 const proposals = [
@@ -44,12 +44,12 @@ const proposals = [
   {
     id: 'proposal_1',
   },
-  {
-    id: 'proposal_2',
-  },
+  // {
+  //   id: 'proposal_2',
+  // },
 ];
 
-const subsidyPoolConstrained = 50;
+const subsidyPoolConstrained = 5e6;
 
 
 
@@ -188,3 +188,5 @@ const results = idealResults.map((p) => {
 })
 
 console.log('results', JSON.stringify(results, null, '  '));
+console.log(results.reduce((r, x) => r + x.distributionActual, 0));
+console.log(results.reduce((r, x) => r + x.votes.reduce((acc, y) => y + acc, 0), 0));
