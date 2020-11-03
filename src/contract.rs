@@ -345,8 +345,7 @@ pub fn calculate_distributions(
     let mut new_denom = denom.clone();
     let math_factor = 1_000_000u128;
 
-    // let budget_value = budget_contstraint[0].amount.u128() as u128 * math_factor;
-    let mut budget_value = budget_contstraint[0].amount.u128() as u128;
+    let mut budget_value = budget_contstraint[0].amount.u128();
     // Multiply values so that we don't have to convert to floats
 
     if !is_coin_micro(&budget_contstraint[0].denom) {
@@ -364,9 +363,6 @@ pub fn calculate_distributions(
     struct DistIdeal {
         proposal: u32,
         recipient: CanonicalAddr,
-        // votes: Vec<f64>,
-        // distribution_ideal: f64,
-        // subsidy_ideal: f64
         votes: Vec<u128>,
         distribution_ideal: u128,
         subsidy_ideal: u128,
@@ -376,17 +372,12 @@ pub fn calculate_distributions(
         .into_iter()
         .map(|p| {
             // Convert votes to a nicer format
-            // let proposal_votes: Vec<f64> = unique_votes
             let proposal_votes: Vec<u128> = unique_votes
                 .iter()
                 .filter(|v| v.proposal == p.id)
-                // .map(|v| v.amount[0].amount.u128() as f64)
-                // .map(|v| v.amount[0].amount.u128() as u128 * math_factor)
-                .map(|v| v.amount[0].amount.u128() as u128)
+                .map(|v| v.amount[0].amount.u128())
                 .collect();
 
-            // let distribution_ideal: f64 = proposal_votes.iter().map(|v| v.sqrt()).sum::<f64>().powi(2);
-            // let subsidy_ideal: f64 = distribution_ideal - proposal_votes.iter().sum::<f64>();
             let distribution_ideal: u128 = proposal_votes
                 .iter()
                 .map(|v| v.integer_sqrt())
@@ -434,17 +425,12 @@ pub fn calculate_distributions(
                 votes: p
                     .votes
                     .iter()
-                    // .map(|v| coin((*v * math_factor) as u128, &new_denom))
-                    .map(|v| coin((*v) as u128, &new_denom))
+                    .map(|v| coin(*v, &new_denom))
                     .collect(),
-                // distribution_ideal: coin((p.distribution_ideal * math_factor) as u128, &new_denom),
-                // subsidy_ideal: coin((p.subsidy_ideal * math_factor) as u128, &new_denom),
-                // distribution_actual: coin((distribution_actual / math_factor) as u128, &new_denom),
-                // subsidy_actual: coin((subsidy_actual / math_factor) as u128, &new_denom),
-                distribution_ideal: coin((p.distribution_ideal) as u128, &new_denom),
-                subsidy_ideal: coin((p.subsidy_ideal) as u128, &new_denom),
-                distribution_actual: coin((distribution_actual) as u128, &new_denom),
-                subsidy_actual: coin((subsidy_actual) as u128, &new_denom),
+                distribution_ideal: coin(p.distribution_ideal, &new_denom),
+                subsidy_ideal: coin(p.subsidy_ideal, &new_denom),
+                distribution_actual: coin(distribution_actual, &new_denom),
+                subsidy_actual: coin(subsidy_actual, &new_denom),
             }
         })
         .collect()

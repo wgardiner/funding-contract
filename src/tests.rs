@@ -684,11 +684,8 @@ mod tests {
         assert_eq!(state.proposals.len(), res.messages.len(),);
         // TODO: Assert that proposal recipients got funds.
 
-        // res.messages[0].
-        // match msg {
         let amounts: Vec<u128> = res.messages.iter().map(|x| match x {
             CosmosMsg::Bank(BankMsg::Send { amount, .. }) => {
-                // amount.iter().map(|c| c.amount.u128()).sum()
                 amount.iter().map(|c| c.amount.u128()).sum()
             }
             _ => unimplemented!()
