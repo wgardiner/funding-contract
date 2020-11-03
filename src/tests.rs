@@ -9,8 +9,9 @@ mod tests {
     use crate::state::{config_read, Distribution, Proposal, Vote};
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
+        MOCK_CONTRACT_ADDR,
     };
-    use cosmwasm_std::{coins, from_binary, Api, Coin, Extern, HumanAddr};
+    use cosmwasm_std::{coins, from_binary, Api, Coin, Extern, HumanAddr, BankMsg, CosmosMsg};
 
     fn default_init_msg() -> InitMsg {
         let env = mock_env();
@@ -656,18 +657,19 @@ mod tests {
 
     #[test]
     fn distribute_funds() {
-        // let mut deps = mock_dependencies(&coins(50, "earth"));
-        let mut deps = mock_dependencies(&coins(100, "earth"));
-        mock_init(&mut deps, default_init_msg());
+        let mut deps = mock_dependencies(&coins(10000, "uearth"));
+        let info = mock_info("owner", &[]);
+        let _res = init(&mut deps, mock_env(), info, default_init_msg()).unwrap();
+
         mock_proposal(&mut deps, default_proposal_msg());
         mock_proposal(&mut deps, default_proposal_msg());
-        mock_vote(&mut deps, "voter_0".to_string(), 0, coins(1, "earth"));
-        mock_vote(&mut deps, "voter_1".to_string(), 0, coins(4, "earth"));
-        mock_vote(&mut deps, "voter_2".to_string(), 1, coins(9, "earth"));
-        mock_vote(&mut deps, "voter_0".to_string(), 1, coins(16, "earth"));
+        mock_vote(&mut deps, "voter_0".to_string(), 0, coins(1000, "uearth"));
+        mock_vote(&mut deps, "voter_1".to_string(), 0, coins(9000, "uearth"));
+        mock_vote(&mut deps, "voter_2".to_string(), 1, coins(4000, "uearth"));
+        mock_vote(&mut deps, "voter_0".to_string(), 1, coins(16000, "uearth"));
 
         // owner can distribute funds.
-        let info = mock_info("owner", &coins(1000, "earth"));
+        let info = mock_info("owner", &[]);
 
         // set the time to after the voting period.
         let mut env = mock_env();
@@ -679,8 +681,23 @@ mod tests {
 
         // assert there is a Distribution for every proposal.
         let state = config_read(&deps.storage).load().unwrap();
-        assert_eq!(state.proposals.len(), res.messages.len(),)
+        assert_eq!(state.proposals.len(), res.messages.len(),);
         // TODO: Assert that proposal recipients got funds.
+
+        // res.messages[0].
+        // match msg {
+        let amounts: Vec<u128> = res.messages.iter().map(|x| match x {
+            CosmosMsg::Bank(BankMsg::Send { amount, .. }) => {
+                // amount.iter().map(|c| c.amount.u128()).sum()
+                amount.iter().map(|c| c.amount.u128()).sum()
+            }
+            _ => unimplemented!()
+        }).collect();
+        let total_distributions: u128 = amounts.iter().sum();
+        // println!("{:#?}", res);
+        // println!("{:#?}", total_distributions);
+        // println!("{:?}", deps.api.human_address(&state.owner).unwrap());
+        assert!(total_distributions < 40_000)
     }
 
     #[test]

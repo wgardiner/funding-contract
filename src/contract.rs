@@ -467,28 +467,28 @@ fn send_distributions<S: Storage, A: Api, Q: Querier>(
 ) -> Result<HandleResponse, ContractError> {
     let attributes = vec![attr("action", action)];
 
-    // it should cost ~800 ucosm to send a
-    let send_cost = 1000;
+    // // it should cost ~800 ucosm to send a
+    // let send_cost = 1000;
     let messages = distributions
         .into_iter()
         .filter_map(|d| {
             let contract_address = env.contract.address.clone();
             let recipient = deps.api.human_address(&d.recipient).unwrap();
-            let amount_send = match d.distribution_actual.amount.u128() > send_cost {
-                true => d.distribution_actual.amount.u128() - send_cost,
-                false => 0,
-            };
-            if amount_send > 0 {
+            // let amount_send = match d.distribution_actual.amount.u128() > send_cost {
+            //     true => d.distribution_actual.amount.u128() - send_cost,
+            //     false => 0,
+            // };
+            // if amount_send > 0 {
                 Some(CosmosMsg::Bank(BankMsg::Send {
                     from_address: contract_address,
                     to_address: recipient,
-                    // amount: vec![d.distribution_actual],
-                    amount: vec![coin(amount_send, "ucosm")],
+                    amount: vec![d.distribution_actual],
+                    // amount: vec![coin(amount_send, "ucosm")],
                     // amount: vec![coin(10, "ucosm")],
                 }))
-            } else {
-                None
-            }
+            // } else {
+            //     None
+            // }
         })
         .collect();
 
