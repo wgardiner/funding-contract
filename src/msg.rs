@@ -22,9 +22,18 @@ pub struct InitMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
-    // Increment {},
-    // Reset { count: i32 },
-    // Create(CreateProposal),
+    StartProposalPeriod {
+        time: Option<u64>,
+    },
+    EndProposalPeriod {
+        time: Option<u64>,
+    },
+    StartVotingPeriod {
+        time: Option<u64>,
+    },
+    EndVotingPeriod {
+        time: Option<u64>,
+    },
     CreateProposal {
         name: String,
         recipient: HumanAddr,

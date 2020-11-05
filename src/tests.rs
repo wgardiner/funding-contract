@@ -9,9 +9,8 @@ mod tests {
     use crate::state::{config_read, Distribution, Proposal, Vote};
     use cosmwasm_std::testing::{
         mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
-        MOCK_CONTRACT_ADDR,
     };
-    use cosmwasm_std::{coins, from_binary, Api, Coin, Extern, HumanAddr, BankMsg, CosmosMsg};
+    use cosmwasm_std::{coins, from_binary, Api, BankMsg, Coin, CosmosMsg, Extern, HumanAddr};
 
     fn default_init_msg() -> InitMsg {
         let env = mock_env();
@@ -31,6 +30,26 @@ mod tests {
             proposal_period_end: Some(env.block.time + 86400),
             voting_period_start: Some(env.block.time + 86400 * 2),
             voting_period_end: Some(env.block.time + 86400 * 5),
+        }
+    }
+
+    fn empty_period_init_msg() -> InitMsg {
+        InitMsg {
+            name: "My Funding Round".to_string(),
+            proposer_whitelist: vec![
+                HumanAddr::from("proposer_0"),
+                HumanAddr::from("proposer_1"),
+                HumanAddr::from("proposer_2"),
+            ],
+            voter_whitelist: vec![
+                HumanAddr::from("voter_0"),
+                HumanAddr::from("voter_1"),
+                HumanAddr::from("voter_2"),
+            ],
+            proposal_period_start: None,
+            proposal_period_end: None,
+            voting_period_start: None,
+            voting_period_end: None,
         }
     }
 
@@ -91,6 +110,132 @@ mod tests {
         assert_eq!(HumanAddr::from("voter_0"), value.voter_whitelist[0]);
         // assert_eq!(17, value.count);
         assert_eq!("My Funding Round", value.name);
+    }
+
+    #[test]
+    fn proper_start_end_proposal_period() {
+        // Init without periods.
+        let mut env = mock_env();
+        let mut deps = mock_dependencies(&[]);
+        let msg = empty_period_init_msg();
+        let info = mock_info("owner", &coins(1000, "earth"));
+        let _res = init(&mut deps, env.clone(), info.clone(), msg).unwrap();
+
+        // Define start and end messages.
+        let start = HandleMsg::StartProposalPeriod { time: None };
+        let end = HandleMsg::EndProposalPeriod { time: None };
+        
+        // Try to start as any user.
+        let res = handle(&mut deps, env.clone(), mock_info("any user", &coins(1000, "earth")), start.clone());
+        match res {
+            Err(ContractError::Unauthorized{ list_type: _}) => {}
+            _ => panic!("Must return error"),
+        }
+
+        // Try to end before starting.
+        let res = handle(&mut deps, env.clone(), info.clone(), end.clone());
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+
+        // Successful start.
+        let _res = handle(&mut deps, env.clone(), info.clone(), start.clone()).unwrap();
+
+        // Try to start again.
+        let res = handle(&mut deps, env.clone(), info.clone(), start.clone());
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+
+        // Successful end.
+        env.block.time += 100;
+        let _res = handle(&mut deps, env.clone(), info.clone(), end.clone()).unwrap();
+
+        // Try to end again.
+        env.block.time += 100;
+        let res = handle(&mut deps, env.clone(), info.clone(), end.clone());
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+    }
+
+    #[test]
+    fn proper_start_end_voting_period() {
+        // Init without periods.
+        let mut env = mock_env();
+        let mut deps = mock_dependencies(&[]);
+        let msg = empty_period_init_msg();
+        let info = mock_info("owner", &coins(1000, "earth"));
+        let _res = init(&mut deps, env.clone(), info.clone(), msg).unwrap();
+
+        // Define start and end messages.
+        let start_voting = HandleMsg::StartVotingPeriod { time: None };
+        let end_voting = HandleMsg::EndVotingPeriod { time: None };
+
+        // Try to start as any user.
+        let res = handle(&mut deps, env.clone(), mock_info("any user", &coins(1000, "earth")), start_voting.clone());
+        match res {
+            Err(ContractError::Unauthorized{ list_type: _}) => {}
+            _ => panic!("Must return error"),
+        }
+
+        // Try to start voting before proposal start.
+        env.block.time += 100;
+        let res = handle(&mut deps, env.clone(), info.clone(), start_voting.clone());
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+
+        // Start proposal period.
+        let start_proposal = HandleMsg::StartProposalPeriod { time: None };
+        let _res = handle(&mut deps, env.clone(), info.clone(), start_proposal).unwrap();
+
+        // Try to start voting before proposal end.
+        env.block.time += 100;
+        let res = handle(&mut deps, env.clone(), info.clone(), start_voting.clone());
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+
+        // End the proposal period.
+        let end_proposal = HandleMsg::EndProposalPeriod { time: None };
+        let _res = handle(&mut deps, env.clone(), info.clone(), end_proposal).unwrap();
+
+        // Try to end voting before starting.
+        env.block.time += 100;
+        let res = handle(&mut deps, env.clone(), info.clone(), end_voting.clone());
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+
+        // Successful start voting.
+        let _res = handle(&mut deps, env.clone(), info.clone(), start_voting.clone()).unwrap();
+
+        // Try to start again.
+        env.block.time += 100;
+        let res = handle(&mut deps, env.clone(), info.clone(), start_voting.clone());
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
+
+        // Successful end voting.
+        env.block.time += 100;
+        let _res = handle(&mut deps, env.clone(), info.clone(), end_voting.clone()).unwrap();
+
+        // Try to end again.
+        env.block.time += 100;
+        let res = handle(&mut deps, env.clone(), info.clone(), end_voting.clone());
+        match res {
+            Err(ContractError::InvalidPeriod { period_type: _ }) => {}
+            _ => panic!("Must return error"),
+        }
     }
 
     #[test]
@@ -633,7 +778,7 @@ mod tests {
         }
     }
 
-    // #[test]
+    #[test]
     fn fail_distribute_funds_invalid_period() {
         let mut deps = mock_dependencies(&coins(1000, "earth"));
         mock_init(&mut deps, default_init_msg());
@@ -684,12 +829,16 @@ mod tests {
         assert_eq!(state.proposals.len(), res.messages.len(),);
         // TODO: Assert that proposal recipients got funds.
 
-        let amounts: Vec<u128> = res.messages.iter().map(|x| match x {
-            CosmosMsg::Bank(BankMsg::Send { amount, .. }) => {
-                amount.iter().map(|c| c.amount.u128()).sum()
-            }
-            _ => unimplemented!()
-        }).collect();
+        let amounts: Vec<u128> = res
+            .messages
+            .iter()
+            .map(|x| match x {
+                CosmosMsg::Bank(BankMsg::Send { amount, .. }) => {
+                    amount.iter().map(|c| c.amount.u128()).sum()
+                }
+                _ => unimplemented!(),
+            })
+            .collect();
         let total_distributions: u128 = amounts.iter().sum();
         // println!("{:#?}", res);
         // println!("{:#?}", total_distributions);

@@ -23,7 +23,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     _env: Env,
     info: MessageInfo,
     msg: InitMsg,
-) -> StdResult<InitResponse> {
+) -> Result<InitResponse, ContractError> {
     // let pw: Vec<CanonicalAddr> = msg.proposer_whitelist.into_iter().map(|x| deps.api.canonical_address(&x)).collect::<Vec<CanonicalAddr>>()?;
     // TODO: this should probably just fail if the user attempts to instantiate the contract
     // with an address that can't be converted to cannonical form in the whitelists.
@@ -72,6 +72,16 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 ) -> Result<HandleResponse, ContractError> {
     let state = config_read(&deps.storage).load()?;
     match msg {
+        HandleMsg::StartProposalPeriod { time } => {
+            try_start_proposal_period(deps, env, info, state, time)
+        }
+        HandleMsg::EndProposalPeriod { time } => {
+            try_end_proposal_period(deps, env, info, state, time)
+        }
+        HandleMsg::StartVotingPeriod { time } => {
+            try_start_voting_period(deps, env, info, state, time)
+        }
+        HandleMsg::EndVotingPeriod { time } => try_end_voting_period(deps, env, info, state, time),
         HandleMsg::CreateProposal {
             name,
             description,
@@ -84,6 +94,162 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::CheckDistributions {} => try_check_distributions(deps, env, info, state),
         HandleMsg::DistributeFunds {} => try_distribute_funds(deps, env, info, state),
     }
+}
+
+pub fn try_start_proposal_period<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    info: MessageInfo,
+    state: State,
+    time: Option<u64>,
+) -> Result<HandleResponse, ContractError> {
+    // Only the contract owner can change periods.
+    let sender_is_valid =
+        validate_sender(deps.api.canonical_address(&info.sender)?, vec![state.owner]);
+    if !sender_is_valid {
+        return Err(ContractError::Unauthorized {
+            list_type: "admin".to_string(),
+        });
+    }
+    // Proposal period can only start if it hasn't happened yet.
+    let proposal_started = period_started(env.block.time, state.proposal_period_start);
+    if proposal_started {
+        return Err(ContractError::InvalidPeriod {
+            period_type: "pre-proposal".to_string(),
+        });
+    };
+
+    let start_time = match time {
+        Some(time) => time,
+        None => env.block.time,
+    };
+
+    config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
+        state.proposal_period_start = Some(start_time);
+        Ok(state)
+    })?;
+    Ok(HandleResponse::default())
+}
+
+pub fn try_end_proposal_period<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    info: MessageInfo,
+    state: State,
+    time: Option<u64>,
+) -> Result<HandleResponse, ContractError> {
+    // Only the contract owner can change periods.
+    let sender_is_valid =
+        validate_sender(deps.api.canonical_address(&info.sender)?, vec![state.owner]);
+    if !sender_is_valid {
+        return Err(ContractError::Unauthorized {
+            list_type: "admin".to_string(),
+        });
+    }
+
+    // Proposal period can only end if it is currently the proposal period.
+    let period_is_valid = validate_period(
+        env.block.time,
+        state.proposal_period_start,
+        state.proposal_period_end,
+    );
+    if !period_is_valid {
+        return Err(ContractError::InvalidPeriod {
+            period_type: "proposal".to_string(),
+        });
+    }
+
+    let end_time = match time {
+        Some(time) => time,
+        None => env.block.time,
+    };
+
+    config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
+        state.proposal_period_end = Some(end_time);
+        Ok(state)
+    })?;
+    Ok(HandleResponse::default())
+}
+
+pub fn try_start_voting_period<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    info: MessageInfo,
+    state: State,
+    time: Option<u64>,
+) -> Result<HandleResponse, ContractError> {
+    // Only the contract owner can change periods.
+    let sender_is_valid =
+        validate_sender(deps.api.canonical_address(&info.sender)?, vec![state.owner]);
+    if !sender_is_valid {
+        return Err(ContractError::Unauthorized {
+            list_type: "admin".to_string(),
+        });
+    }
+
+    // Voting period can only start if proposal period ended.
+    let proposal_ended = period_ended(env.block.time, state.proposal_period_end);
+
+    // Voting period can only start if it hasn't happened yet.
+    let voting_started = period_started(env.block.time, state.voting_period_start);
+    println!("{} - {}", proposal_ended, voting_started);
+    if !proposal_ended || voting_started {
+        return Err(ContractError::InvalidPeriod {
+            period_type: "pre-voting".to_string(),
+        });
+    };
+
+    let start_time = match time {
+        Some(time) => time,
+        None => env.block.time,
+    };
+    println!("at - {}", start_time);
+
+    config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
+        state.voting_period_start = Some(start_time);
+        Ok(state)
+    })?;
+    Ok(HandleResponse::default())
+}
+
+pub fn try_end_voting_period<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    info: MessageInfo,
+    state: State,
+    time: Option<u64>,
+) -> Result<HandleResponse, ContractError> {
+    // Only the contract owner can change periods.
+    let sender_is_valid =
+        validate_sender(deps.api.canonical_address(&info.sender)?, vec![state.owner]);
+    if !sender_is_valid {
+        return Err(ContractError::Unauthorized {
+            list_type: "admin".to_string(),
+        });
+    }
+
+    // Voting period can only end if it is currently the voting period.
+    let period_is_valid = validate_period(
+        env.block.time,
+        state.voting_period_start,
+        state.voting_period_end,
+    );
+    if !period_is_valid {
+        return Err(ContractError::InvalidPeriod {
+            period_type: "voting".to_string(),
+        });
+    }
+
+    let end_time = match time {
+        Some(time) => time,
+        None => env.block.time,
+    };
+
+    config(&mut deps.storage).update(|mut state| -> Result<State, ContractError> {
+        state.voting_period_end = Some(end_time);
+        Ok(state)
+    })?;
+    Ok(HandleResponse::default())
 }
 
 // TODO: Can we decrease the number of arguments?
@@ -108,8 +274,8 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     }
     let period_is_valid = validate_period(
         env.block.time,
-        state.proposal_period_start.unwrap(),
-        state.proposal_period_end.unwrap(),
+        state.proposal_period_start,
+        state.proposal_period_end,
     );
     if !period_is_valid {
         return Err(ContractError::InvalidPeriod {
@@ -139,16 +305,25 @@ pub fn try_create_proposal<S: Storage, A: Api, Q: Querier>(
     Ok(res)
 }
 
-pub fn validate_period(time: u64, period_start: u64, period_end: u64) -> bool {
-    if time < period_start {
-        return false;
+pub fn period_started(time: u64, period_start: Option<u64>) -> bool {
+    match period_start {
+        Some(start) => time >= start,
+        None => false,
     }
+}
 
-    if time > period_end {
-        return false;
+pub fn period_ended(time: u64, period_end: Option<u64>) -> bool {
+    match period_end {
+        Some(end) => time > end,
+        None => false,
     }
+}
 
-    true
+pub fn validate_period(time: u64, period_start: Option<u64>, period_end: Option<u64>) -> bool {
+    let started = period_started(time, period_start);
+    let ended = period_ended(time, period_end);
+    // period is valid if it started and has not ended.
+    started && !ended
 }
 
 pub fn validate_sender(addr: CanonicalAddr, list: Vec<CanonicalAddr>) -> bool {
@@ -173,8 +348,8 @@ pub fn try_create_vote<S: Storage, A: Api, Q: Querier>(
     }
     let period_is_valid = validate_period(
         env.block.time,
-        state.voting_period_start.unwrap(),
-        state.voting_period_end.unwrap(),
+        state.voting_period_start,
+        state.voting_period_end,
     );
     if !period_is_valid {
         return Err(ContractError::InvalidPeriod {
@@ -207,14 +382,10 @@ pub fn try_check_distributions<S: Storage, A: Api, Q: Querier>(
     state: State,
 ) -> Result<HandleResponse, ContractError> {
     // Distributions can only be checked after proposal period.
-    let period_is_valid = validate_period(
-        env.block.time,
-        state.voting_period_start.unwrap(),
-        state.voting_period_end.unwrap(),
-    );
+    let period_is_valid = period_ended(env.block.time, state.proposal_period_end);
     if !period_is_valid {
         return Err(ContractError::InvalidPeriod {
-            period_type: "voting".to_string(),
+            period_type: "post-proposal".to_string(),
         });
     }
 
@@ -258,13 +429,11 @@ pub fn try_distribute_funds<S: Storage, A: Api, Q: Querier>(
         validate_sender(deps.api.canonical_address(&info.sender)?, vec![state.owner]);
     if !sender_is_valid {
         return Err(ContractError::Unauthorized {
-            list_type: "owner".to_string(),
+            list_type: "admin".to_string(),
         });
     }
     // Distributions can only be checked after proposal period.
-    let period_is_valid =
-        // validate_period(env.block.time, state.voting_period_end.unwrap(), u64::MAX);
-        true;
+    let period_is_valid = validate_period(env.block.time, state.voting_period_end, Some(u64::MAX));
     if !period_is_valid {
         return Err(ContractError::InvalidPeriod {
             period_type: "voting".to_string(),
@@ -422,11 +591,7 @@ pub fn calculate_distributions(
             Distribution {
                 proposal: p.proposal,
                 recipient: p.recipient,
-                votes: p
-                    .votes
-                    .iter()
-                    .map(|v| coin(*v, &new_denom))
-                    .collect(),
+                votes: p.votes.iter().map(|v| coin(*v, &new_denom)).collect(),
                 distribution_ideal: coin(p.distribution_ideal, &new_denom),
                 subsidy_ideal: coin(p.subsidy_ideal, &new_denom),
                 distribution_actual: coin(distribution_actual, &new_denom),
@@ -457,7 +622,7 @@ fn send_distributions<S: Storage, A: Api, Q: Querier>(
     // let send_cost = 1000;
     let messages = distributions
         .into_iter()
-        .filter_map(|d| {
+        .map(|d| {
             let contract_address = env.contract.address.clone();
             let recipient = deps.api.human_address(&d.recipient).unwrap();
             // let amount_send = match d.distribution_actual.amount.u128() > send_cost {
@@ -465,13 +630,13 @@ fn send_distributions<S: Storage, A: Api, Q: Querier>(
             //     false => 0,
             // };
             // if amount_send > 0 {
-                Some(CosmosMsg::Bank(BankMsg::Send {
-                    from_address: contract_address,
-                    to_address: recipient,
-                    amount: vec![d.distribution_actual],
-                    // amount: vec![coin(amount_send, "ucosm")],
-                    // amount: vec![coin(10, "ucosm")],
-                }))
+            CosmosMsg::Bank(BankMsg::Send {
+                from_address: contract_address,
+                to_address: recipient,
+                amount: vec![d.distribution_actual],
+                // amount: vec![coin(amount_send, "ucosm")],
+                // amount: vec![coin(10, "ucosm")],
+            })
             // } else {
             //     None
             // }
