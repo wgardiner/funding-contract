@@ -124,11 +124,16 @@ mod tests {
         // Define start and end messages.
         let start = HandleMsg::StartProposalPeriod { time: None };
         let end = HandleMsg::EndProposalPeriod { time: None };
-        
+
         // Try to start as any user.
-        let res = handle(&mut deps, env.clone(), mock_info("any user", &coins(1000, "earth")), start.clone());
+        let res = handle(
+            &mut deps,
+            env.clone(),
+            mock_info("any user", &coins(1000, "earth")),
+            start.clone(),
+        );
         match res {
-            Err(ContractError::Unauthorized{ list_type: _}) => {}
+            Err(ContractError::Unauthorized { list_type: _ }) => {}
             _ => panic!("Must return error"),
         }
 
@@ -176,9 +181,14 @@ mod tests {
         let end_voting = HandleMsg::EndVotingPeriod { time: None };
 
         // Try to start as any user.
-        let res = handle(&mut deps, env.clone(), mock_info("any user", &coins(1000, "earth")), start_voting.clone());
+        let res = handle(
+            &mut deps,
+            env.clone(),
+            mock_info("any user", &coins(1000, "earth")),
+            start_voting.clone(),
+        );
         match res {
-            Err(ContractError::Unauthorized{ list_type: _}) => {}
+            Err(ContractError::Unauthorized { list_type: _ }) => {}
             _ => panic!("Must return error"),
         }
 
