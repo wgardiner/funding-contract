@@ -14,6 +14,13 @@
     }
   },
   "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "CanonicalAddr": {
+      "$ref": "#/definitions/Binary"
+    },
     "Coin": {
       "type": "object",
       "required": [
@@ -35,6 +42,7 @@
         "distribution_actual",
         "distribution_ideal",
         "proposal",
+        "recipient",
         "subsidy_actual",
         "subsidy_ideal",
         "votes"
@@ -50,6 +58,9 @@
           "type": "integer",
           "format": "uint32",
           "minimum": 0.0
+        },
+        "recipient": {
+          "$ref": "#/definitions/CanonicalAddr"
         },
         "subsidy_actual": {
           "$ref": "#/definitions/Coin"

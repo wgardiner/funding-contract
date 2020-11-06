@@ -5,6 +5,90 @@
     {
       "type": "object",
       "required": [
+        "start_proposal_period"
+      ],
+      "properties": {
+        "start_proposal_period": {
+          "type": "object",
+          "properties": {
+            "time": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "end_proposal_period"
+      ],
+      "properties": {
+        "end_proposal_period": {
+          "type": "object",
+          "properties": {
+            "time": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "start_voting_period"
+      ],
+      "properties": {
+        "start_voting_period": {
+          "type": "object",
+          "properties": {
+            "time": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "end_voting_period"
+      ],
+      "properties": {
+        "end_voting_period": {
+          "type": "object",
+          "properties": {
+            "time": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
         "create_proposal"
       ],
       "properties": {
